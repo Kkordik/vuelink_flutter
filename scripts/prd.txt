@@ -1,32 +1,45 @@
 # Overview
-Vuelink is an offline communication application designed for airline operators to disseminate critical flight information during network connectivity outages. Utilizing Bluetooth Low Energy (BLE) protocol, the application implements a decentralized mesh network architecture where flight information propagates through device-to-device transmission without requiring Wi-Fi or cellular connectivity. This ensures passengers receive time-sensitive updates regarding boarding procedures, gate reassignments, and schedule modifications even during complete telecommunications infrastructure failures at airport terminals. The system uses a specific BLE protocol leveraging Android's capabilities as GATT servers for data hosting and transmission, while both Android and iOS devices act as scanners and clients. It is designed for extreme data minimization, transmitting only the most essential flight information to maximize propagation efficiency within strict BLE constraints.
+Vuelink is an offline communication application designed for airline operators to disseminate critical flight information during network connectivity outages. Utilizing Bluetooth Low Energy (BLE) protocol, the application implements a decentralized mesh network architecture where flight information propagates through device-to-device transmission without requiring Wi-Fi or cellular connectivity. This ensures passengers receive time-sensitive updates regarding boarding procedures, gate reassignments, and schedule modifications even during complete telecommunications infrastructure failures at airport terminals. The system uses a specific BLE advertisement-only protocol leveraging both Android and iOS capabilities for data transmission and forwarding. It is designed for extreme data minimization, transmitting only the most essential flight information to maximize propagation efficiency within strict BLE constraints.
 
 # Core Features
 
-## BLE Advertisement Transmission (Android Origin/Host Only)
-- **What it does:** Periodically transmits BLE advertisement packets containing essential message identifiers and metadata. This role is primarily performed by the originating Android device or designated Android relay hosts.
-- **Why it's important:** Initiates the message discovery process for nearby scanning devices.
-- **How it works:** The originating Android device (acting as a BLE Peripheral and GATT Server) constructs a minimal advertisement packet containing a unique message UUID (or hash) and a sender identifier. This packet is broadcast periodically (e.g., 500ms-1s) while the app is active. Other Android devices configured as hosts may also perform this role.
+## BLE Advertisement Transmission (All Devices)
+- **What it does:** Transmits BLE advertisement packets containing message data, either complete or in parts.
+- **Why it's important:** Initiates the message discovery process for nearby scanning devices and delivers the full message content.
+- **How it works:** The originating device constructs advertisement packets based on the message type and broadcasts each packet for approximately 3 seconds. For larger messages, multiple sequential advertisements contain parts of the same message. Devices receiving these messages may also forward them (once) to extend reach.
 
 ## BLE Scanning and Discovery (All Devices)
 - **What it does:** Actively scans for Vuelink BLE advertisement packets in the foreground.
-- **Why it's important:** Enables all nearby devices (Android and iOS) to detect the presence of new information.
-- **How it works:** Devices running the app in the foreground operate in BLE Central mode, continuously scanning for advertisement packets matching the Vuelink service UUID. They extract the `message_id` and sender identifier upon detection.
+- **Why it's important:** Enables all nearby devices (Android and iOS) to detect and collect message data.
+- **How it works:** Devices running the app in the foreground operate in BLE Central mode, continuously scanning for advertisement packets matching the Vuelink service UUID. They extract message data, assemble multi-part messages, and process them according to message type.
 
-## Message Fetching via GATT (Client Role, Android Server Required)
-- **What it does:** Connects to an advertising Android device (GATT Server) to retrieve the full message payload if the message ID is not already cached.
-- **Why it's important:** Allows devices to obtain the complete information after initial discovery.
-- **How it works:** Upon detecting a new `message_id`, the scanning device (Android or iOS, acting as GATT Client) attempts a BLE connection to the advertising device's GATT server. **Connection is only possible if the advertiser is an Android device.** If successful, the client requests and downloads the full message payload associated with the `message_id`.
+## Message Types and Format
+- **General Basic Message:** References pre-loaded content using message IDs
+  - message_id: References a message stored in the app
+  - repeat_flag: Indicates whether message should be treated as new and forwarded
+
+- **General Text Message:** Multi-part custom text messages
+  - message_part_identifier: Format "current_part/total_parts" (e.g., 1/5)
+  - text_content: The actual message content for this part
+
+- **Flight Update (Preloaded):** References pre-loaded flight-specific content
+  - flight_id: Identifies the specific flight
+  - message_id: References a pre-loaded message for this flight
+
+- **Flight Update General:** Multi-part flight-specific custom messages
+  - flight_id: Identifies the specific flight
+  - message_part_identifier: Format "current_part/total_parts"
+  - text_content: The flight-specific message content for this part
+
+## Message Forwarding Protocol
+- **What it does:** Implements controlled message propagation through the mesh network.
+- **Why it's important:** Extends the reach of messages beyond direct range of the origin device.
+- **How it works:** Upon receiving and assembling a complete message, devices forward each advertisement exactly once (unless the repeat flag indicates otherwise). Messages received multiple times are not forwarded again to prevent network congestion.
 
 ## Distributed Message Persistence Layer
 - **What it does:** Implements a local data persistence mechanism for received message payloads.
-- **Why it's important:** Eliminates redundant data transfers and allows devices to quickly check if they already possess the information.
-- **How it works:** Each device maintains a local key-value database indexing messages by UUID/hash, implementing collision detection and preventing duplicate fetch requests.
-
-## Limited Echo Rebroadcasting (Optional, Short-Lived)
-- **What it does:** Optionally performs a brief, time-limited rebroadcast of a received message's advertisement packet.
-- **Why it's important:** Can help propagate the discovery signal to immediate neighbors, especially in dense environments, without causing network congestion.
-- **How it works:** After successfully fetching and caching a message, a device (Android or iOS) *may* perform a single rebroadcast or a short burst (e.g., 1-3 times over a few seconds) of the same advertisement packet it received. **Crucially, devices do not engage in continuous periodic advertising unless they are the origin Android device or a designated Android host.** This conserves battery and minimizes BLE channel congestion.
+- **Why it's important:** Eliminates redundant data transfers and allows devices to track which messages have been processed.
+- **How it works:** Each device maintains a local key-value database indexing messages by ID, implementing collision detection and preventing duplicate message processing.
 
 ## Flight Information Rendering System
 - **What it does:** Displays flight-specific data received through the mesh network architecture.
@@ -34,39 +47,41 @@ Vuelink is an offline communication application designed for airline operators t
 - **How it works:** Processes received message payloads through a rendering pipeline optimized for displaying prioritized aviation-specific notifications with appropriate visual hierarchy.
 
 ## Data Minimization Framework
-- **What it does:** Enforces strict data minimization across all transmissions (advertisements and GATT payloads).
+- **What it does:** Enforces strict data minimization across all transmissions.
 - **Why it's important:** Maximizes transmission efficiency and reach within BLE constraints.
 - **How it works:** Implements binary encoding schemes, lookup tables for common values, and prioritization algorithms that ensure only the most critical data elements are transmitted.
 
 # User Experience
 
 ## User Personas
-- **Airline Operations Personnel:** Ground personnel and gate representatives using **Android devices** responsible for originating critical flight information during system outages.
-- **Passengers:** Travelers using **Android or iOS devices** requiring timely and accurate flight updates, particularly during connectivity disruptions.
-- **Airport Management:** Personnel responsible for facility-wide communications (likely using designated Android broadcast devices).
+- **Airline Operations Personnel:** Ground personnel and gate representatives responsible for originating critical flight information during system outages.
+- **Passengers:** Travelers requiring timely and accurate flight updates, particularly during connectivity disruptions.
+- **Airport Management:** Personnel responsible for facility-wide communications.
 
 ## Key User Flows
-- **Message Origination & Transmission (Airline Personnel - Android Only):**
-  1. Authenticate with appropriate credentials on an Android device.
-  2. Select flight identifier.
-  3. Select message classification.
-  4. Input minimal payload content.
-  5. Confirm and initiate periodic BLE advertisement transmission (device acts as Peripheral & GATT Server).
+- **Message Origination & Transmission (Airline Personnel):**
+  1. Authenticate with appropriate credentials.
+  2. Select message type (general or flight-specific).
+  3. For flight-specific, select flight identifier.
+  4. Choose between pre-loaded message or custom text.
+  5. For custom text, input content (system automatically splits into parts if needed).
+  6. Set repeat flag if message should be treated as new when received again.
+  7. Confirm and initiate advertisement transmission sequence.
 
-- **Message Reception Protocol (Passengers - Android & iOS):**
-  1. Launch application (foreground execution required, device acts as Central & GATT Client).
+- **Message Reception Protocol (Passengers):**
+  1. Launch application (foreground execution required).
   2. System automatically initiates BLE scanning.
-  3. Detects advertisement packet, extracts `message_id`.
-  4. Check local cache for `message_id`.
-  5. **If new:** Attempt GATT connection to the advertiser (requires advertiser to be Android).
-  6. **If connection successful:** Fetch full payload, cache it. Optionally perform brief echo rebroadcast.
-  7. Render message payload.
-  8. **If connection fails (e.g., advertiser is iOS or out of range):** Retry briefly or await discovery from another Android host.
+  3. Detects advertisement packets, extracts message data.
+  4. For multi-part messages, collects all parts before processing.
+  5. Check message ID against local cache.
+  6. If new or has repeat flag set to true: Process message, notify user, and forward.
+  7. If already seen and repeat flag is false: Ignore.
+  8. Render message content based on message type.
 
 ## UI/UX Implementation Specifications
 - High-contrast interface optimized for variable ambient lighting conditions.
 - Minimal interaction requirements for message reception.
-- Visual indicators of active scanning state, connection attempts, and successful fetch.
+- Visual indicators of active scanning state and message reception.
 - Chronological indicators of message age and freshness.
 - Power consumption monitoring and configuration options (e.g., scan intensity).
 - Multi-modal alerts utilizing audio and haptic feedback for priority messages.
@@ -76,21 +91,22 @@ Vuelink is an offline communication application designed for airline operators t
 ## System Components
 - **Flutter Cross-Platform Application Framework**
   - Unified codebase for Android and iOS platforms.
-  - Platform-specific BLE implementation modules utilizing native APIs (recognizing platform role differences).
+  - Platform-specific BLE implementation modules utilizing native APIs.
 
 - **BLE Communication Architecture**
-  - **Peripheral/GATT Server Module (Android Only):** Manages advertising, handles incoming GATT connections, serves message payloads.
-  - **Central/GATT Client Module (Android & iOS):** Manages scanning, initiates GATT connections, requests message payloads.
-  - Connection Management & State Machine: Handles BLE connection lifecycle, retries, and role transitions.
+  - **Advertisement Module:** Manages creation and transmission of advertisement packets.
+  - **Scanning Module:** Manages discovery of advertisement packets.
+  - **Message Assembly System:** Collects and reassembles multi-part messages.
+  - **Forwarding Logic:** Controls message retransmission rules.
 
 - **Persistent Storage Implementation**
-  - Message cache database (e.g., SQLite, Hive) with indexed lookup by `message_id`.
-  - UUID/hash collision detection.
+  - Message cache database (e.g., SQLite, Hive) with indexed lookup by message ID.
+  - Message assembly tracking for multi-part messages.
   - Time-to-live (TTL) management and message expiration handling.
 
 - **Message Processing Pipeline**
-  - Payload validation and integrity verification (using hashes).
-  - Duplicate detection based on cached `message_id`s.
+  - Payload validation and integrity verification.
+  - Duplicate detection based on cached message IDs.
   - Priority classification system.
 
 - **Data Optimization Engine**
@@ -102,26 +118,25 @@ Vuelink is an offline communication application designed for airline operators t
 ## Data Models
 - **Message Entity (Stored Locally)**
   - `message_id` (UUID/hash) - Primary Key
+  - Message type (enum) - 2 bits
   - Creation timestamp (Unix epoch format) - 4 bytes
   - Expiration timestamp (relative offset) - 1 byte
-  - Message classification enum - 3 bits
-  - Flight entity reference (compressed identifier) - 3 bytes
-  - Full Payload (highly compressed UTF-8 encoded content) - variable, strictly limited
-  - Metadata (priority level only) - 3 bits
+  - Message parts count (for multi-part messages) - 1 byte
+  - Parts received (bitmap) - variable
+  - Flight ID (for flight-specific messages) - 3 bytes
+  - Full Payload (assembled from parts) - variable, strictly limited
+  - Metadata (priority level, repeat flag) - 4 bits
   - Originator Identifier (hash/UUID)
 
 - **BLE Advertisement Packet Structure (Transmitted)**
   - Service UUID (identifies Vuelink app)
-  - `message_id` (truncated UUID/hash - e.g., 8 bytes)
-  - Sender Identifier (truncated hash/UUID - e.g., 2 bytes)
-  - Message type enumeration (3 bits)
-  - Priority indicator (3 bits)
-  - Versioning/Flags (optional)
+  - Message type indicator (2 bits)
+  - Message-specific data (based on type):
+    - For Basic: message_id (8 bytes), repeat_flag (1 bit)
+    - For Text: message_id (6 bytes), part_number (4 bits), total_parts (4 bits), text_content (remaining bytes)
+    - For Flight Preloaded: flight_id (3 bytes), message_id (8 bytes), repeat_flag (1 bit)
+    - For Flight Text: flight_id (3 bytes), message_id (4 bytes), part_number (4 bits), total_parts (4 bits), text_content (remaining bytes)
   - **Total packet size: ≤31 bytes** (absolute BLE limit)
-
-- **GATT Characteristic (Payload Transfer)**
-  - Characteristic UUID (for message payload)
-  - Value: Full, compressed message payload (read operation)
 
 - **Flight Entity (Conceptual - elements encoded in payload)**
   - IATA/ICAO flight designator (compressed format)
@@ -129,6 +144,71 @@ Vuelink is an offline communication application designed for airline operators t
   - Departure time (offset format)
   - Status enumeration (3 bits)
   - Gate information (compressed format)
+
+## Essential Data Elements (Prioritized for Advertisement)
+1. Message type indicator and IDs (highest priority)
+2. Flight identifier (for flight-specific messages)
+3. Part number and total parts (for multi-part messages)
+4. Repeat flag
+5. Message content (maximized within remaining space)
+
+Vuelink is an offline communication application designed for airline operators to disseminate critical flight information during network connectivity outages. Utilizing Bluetooth Low Energy (BLE) protocol, the application implements a decentralized mesh network architecture where flight information propagates through device-to-device transmission without requiring Wi-Fi or cellular connectivity. This ensures passengers receive time-sensitive updates regarding boarding procedures, gate reassignments, and schedule modifications even during complete telecommunications infrastructure failures at airport terminals. The system uses a specific BLE protocol leveraging Android's capabilities as GATT servers for data hosting and transmission, while both Android and iOS devices act as scanners and clients. It is designed for extreme data minimization, transmitting only the most essential flight information to maximize propagation efficiency within strict BLE constraints.
+## BLE Advertisement Transmission (Android Origin/Host Only)
+- **What it does:** Periodically transmits BLE advertisement packets containing essential message identifiers and metadata. This role is primarily performed by the originating Android device or designated Android relay hosts.
+- **Why it's important:** Initiates the message discovery process for nearby scanning devices.
+- **How it works:** The originating Android device (acting as a BLE Peripheral and GATT Server) constructs a minimal advertisement packet containing a unique message UUID (or hash) and a sender identifier. This packet is broadcast periodically (e.g., 500ms-1s) while the app is active. Other Android devices configured as hosts may also perform this role.
+- **Why it's important:** Enables all nearby devices (Android and iOS) to detect the presence of new information.
+- **How it works:** Devices running the app in the foreground operate in BLE Central mode, continuously scanning for advertisement packets matching the Vuelink service UUID. They extract the `message_id` and sender identifier upon detection.
+## Message Fetching via GATT (Client Role, Android Server Required)
+- **What it does:** Connects to an advertising Android device (GATT Server) to retrieve the full message payload if the message ID is not already cached.
+- **Why it's important:** Allows devices to obtain the complete information after initial discovery.
+- **How it works:** Upon detecting a new `message_id`, the scanning device (Android or iOS, acting as GATT Client) attempts a BLE connection to the advertising device's GATT server. **Connection is only possible if the advertiser is an Android device.** If successful, the client requests and downloads the full message payload associated with the `message_id`.
+- **Why it's important:** Eliminates redundant data transfers and allows devices to quickly check if they already possess the information.
+- **How it works:** Each device maintains a local key-value database indexing messages by UUID/hash, implementing collision detection and preventing duplicate fetch requests.
+
+## Limited Echo Rebroadcasting (Optional, Short-Lived)
+- **What it does:** Optionally performs a brief, time-limited rebroadcast of a received message's advertisement packet.
+- **Why it's important:** Can help propagate the discovery signal to immediate neighbors, especially in dense environments, without causing network congestion.
+- **How it works:** After successfully fetching and caching a message, a device (Android or iOS) *may* perform a single rebroadcast or a short burst (e.g., 1-3 times over a few seconds) of the same advertisement packet it received. **Crucially, devices do not engage in continuous periodic advertising unless they are the origin Android device or a designated Android host.** This conserves battery and minimizes BLE channel congestion.
+- **What it does:** Enforces strict data minimization across all transmissions (advertisements and GATT payloads).
+- **Airline Operations Personnel:** Ground personnel and gate representatives using **Android devices** responsible for originating critical flight information during system outages.
+- **Passengers:** Travelers using **Android or iOS devices** requiring timely and accurate flight updates, particularly during connectivity disruptions.
+- **Airport Management:** Personnel responsible for facility-wide communications (likely using designated Android broadcast devices).
+- **Message Origination & Transmission (Airline Personnel - Android Only):**
+  1. Authenticate with appropriate credentials on an Android device.
+  2. Select flight identifier.
+  3. Select message classification.
+  4. Input minimal payload content.
+  5. Confirm and initiate periodic BLE advertisement transmission (device acts as Peripheral & GATT Server).
+- **Message Reception Protocol (Passengers - Android & iOS):**
+  1. Launch application (foreground execution required, device acts as Central & GATT Client).
+  3. Detects advertisement packet, extracts `message_id`.
+  4. Check local cache for `message_id`.
+  5. **If new:** Attempt GATT connection to the advertiser (requires advertiser to be Android).
+  6. **If connection successful:** Fetch full payload, cache it. Optionally perform brief echo rebroadcast.
+  7. Render message payload.
+  8. **If connection fails (e.g., advertiser is iOS or out of range):** Retry briefly or await discovery from another Android host.
+- Visual indicators of active scanning state, connection attempts, and successful fetch.
+  - Platform-specific BLE implementation modules utilizing native APIs (recognizing platform role differences).
+  - **Peripheral/GATT Server Module (Android Only):** Manages advertising, handles incoming GATT connections, serves message payloads.
+  - **Central/GATT Client Module (Android & iOS):** Manages scanning, initiates GATT connections, requests message payloads.
+  - Connection Management & State Machine: Handles BLE connection lifecycle, retries, and role transitions.
+  - Message cache database (e.g., SQLite, Hive) with indexed lookup by `message_id`.
+  - UUID/hash collision detection.
+  - Payload validation and integrity verification (using hashes).
+  - Duplicate detection based on cached `message_id`s.
+  - Message classification enum - 3 bits
+  - Flight entity reference (compressed identifier) - 3 bytes
+  - Full Payload (highly compressed UTF-8 encoded content) - variable, strictly limited
+  - Metadata (priority level only) - 3 bits
+  - `message_id` (truncated UUID/hash - e.g., 8 bytes)
+  - Sender Identifier (truncated hash/UUID - e.g., 2 bytes)
+  - Message type enumeration (3 bits)
+  - Priority indicator (3 bits)
+  - Versioning/Flags (optional)
+- **GATT Characteristic (Payload Transfer)**
+  - Characteristic UUID (for message payload)
+  - Value: Full, compressed message payload (read operation)
 
 ## Essential Data Elements (Prioritized for Payload/Advertisement)
 1. Flight identifier (highest priority)
@@ -142,10 +222,8 @@ Vuelink is an offline communication application designed for airline operators t
 ## Platform-Specific Implementation Details & Roles
 | Role                 | Android                                       | iOS                                             |
 |----------------------|-----------------------------------------------|-------------------------------------------------|
-| BLE Central          | ✅ (Foreground Scanning)                       | ✅ (Foreground Scanning)                         |
+| BLE Central (Scanning)  | ✅ (Background & Foreground Scanning) | ✅ (Foreground Scanning Only)                          |
 | BLE Peripheral       | ✅ (Foreground Advertising - Origin/Host Only) | ⚠️ (Limited, cannot act as data host)           |
-| GATT Server          | ✅ (Origin/Host Only)                         | ❌ (Platform Limitation)                        |
-| GATT Client          | ✅                                            | ✅                                              |
 | Periodic Advertising | ✅ (Origin/Host Only)                         | ❌                                              |
 | Message Relay        | ✅ (Full payload hosting + Optional Echo)     | ⚠️ (Optional Echo Rebroadcast Only)             |
 
@@ -153,26 +231,26 @@ Vuelink is an offline communication application designed for airline operators t
 - No authentication dependencies for core message reception.
 - No external API requirements for mesh operation.
 - No network connectivity dependencies for mesh operation.
-- Pure peer-to-peer transmission protocol leveraging Android GATT servers.
+- Pure peer-to-peer transmission protocol leveraging BLE advertisements.
 
 # Development Roadmap
 
 ## Phase 1: Core BLE Protocol Implementation (MVP)
-- BLE advertisement transmission implementation (Android - Peripheral/GATT Server).
-- BLE scanning implementation (Android & iOS - Central).
-- GATT Client implementation for fetching data (Android & iOS).
+- BLE advertisement transmission implementation for all message types.
+- BLE scanning implementation.
+- Message assembly system for multi-part messages.
 - Basic message structure, ID generation, and serialization protocol.
 - Basic persistence layer implementation (caching).
-- Command-line/simple UI testing interface for validating scan->connect->fetch flow.
+- Forwarding logic implementation.
+- Command-line/simple UI testing interface.
 - Minimal UI implementing text-only message display.
 - Logging infrastructure.
 - Data minimization framework implementation (basic binary encoding).
 
 ## Phase 2: Mesh Network Enhancement
-- Connection state management (handling connects, disconnects, retries).
-- Complete message transfer protocol specification (GATT characteristic definition).
-- Implementation of limited "echo" rebroadcasting logic.
-- Refined UUID-based caching system (handling collisions, TTL).
+- Advanced forwarding strategy optimization.
+- Complete message format finalization.
+- Message deduplication refinement.
 - Background execution optimizations (within platform limits).
 - Basic UI implementing message list visualization.
 - Binary encoding optimization for payload reduction.
@@ -182,89 +260,87 @@ Vuelink is an offline communication application designed for airline operators t
 - Message type classification system for aviation use cases.
 - Priority-based message queue management/display.
 - Time-to-live and expiration policy implementation in cache.
-- Airline personnel message composition interface (Android).
+- Airline personnel message composition interface.
 - Passenger-oriented UI optimization.
 - Data filtering and sorting implementation.
 - Lookup table system for common flight data elements.
 
 ## Phase 4: UI/UX Implementation
 - Comprehensive UI component implementation.
-- Notification system integration (local notifications on fetch).
+- Notification system integration (local notifications on message reception).
 - Power optimization configuration interface.
 - Message history and management functionality.
 - Visual flight information display components.
-- Personnel authentication mechanism (Android origin app).
+- Personnel authentication mechanism.
 - Accessibility compliance implementation.
 - Dynamic information density controls.
 
 ## Phase 5: Advanced Functionality
 - Payload encryption for sensitive information transmission.
-- Templated message composition system (Android origin app).
+- Templated message composition system.
 - Propagation analytics (offline capability - e.g., tracking hops via metadata).
 - Internationalization support.
-- Scheduled message transmission capability (Android origin app).
+- Scheduled message transmission capability.
 - Integration interfaces for airline systems (when connectivity available - for data input).
 - Advanced compression techniques for extreme payload optimization.
 
 # Logical Dependency Chain
 
 ## Foundation Layer (Initial Implementation)
-1. BLE advertisement transmission (Android Peripheral/Server)
-2. BLE scanning implementation (Central Role - All)
-3. GATT Client implementation (All)
+1. BLE advertisement transmission (all message types)
+2. BLE scanning implementation
+3. Message assembly system for multi-part messages
 4. Message structure specification and serialization/deserialization
-5. Device-to-device connection & fetch implementation (Client -> Server)
-6. Local persistence implementation (Caching)
-7. Data minimization framework (Basic Encoding)
+5. Local persistence implementation (Caching)
+6. Data minimization framework (Basic Encoding)
 
 ## Core Functionality Layer
-8. Connection State Management
-9. Message deduplication system (Cache check)
-10. Flight information data model (Encoding/Decoding)
-11. Basic message rendering implementation
-12. Critical data element identification and prioritization
-13. Limited Echo Rebroadcasting Logic
+7. Message forwarding logic
+8. Message deduplication system (Cache check)
+9. Flight information data model (Encoding/Decoding)
+10. Basic message rendering implementation
+11. Critical data element identification and prioritization
 
 ## Enhanced Capability Layer
-14. Airline personnel message composition interface (Android)
-15. Message classification system
-16. Priority-based message handling/display
-17. User notification system implementation (Local Notifications)
-18. Adaptive compression based on message priority
+12. Airline personnel message composition interface
+13. Message classification system
+14. Priority-based message handling/display
+15. User notification system implementation (Local Notifications)
+16. Adaptive compression based on message priority
 
 ## UI Refinement Layer
-19. Message list visualization components
-20. Flight information visualization components
-21. User preference configuration interface (e.g., scan intensity)
-22. Power optimization controls
-23. Information density control interface
+17. Message list visualization components
+18. Flight information visualization components
+19. User preference configuration interface (e.g., scan intensity)
+20. Power optimization controls
+21. Information density control interface
 
 ## Advanced Enhancement Layer
-24. Background execution optimizations (Platform specific)
-25. Message lifecycle management (TTL, cleanup)
-26. Personnel authentication system (Android)
-27. Airline branding customization framework
-28. Dynamic payload optimization system
+22. Background execution optimizations (Platform specific)
+23. Message lifecycle management (TTL, cleanup)
+24. Personnel authentication system
+25. Airline branding customization framework
+26. Dynamic payload optimization system
 
 # Risks and Mitigations
 
 ## Technical Challenges
-- **Platform BLE Implementation Constraints:** iOS cannot act as GATT Server or perform reliable background advertising/scanning.
-  - *Mitigation:* Design protocol around Android acting as the required GATT Server/persistent advertiser. Optimize iOS for foreground scanning/client role. Clear user communication about app state requirements (foreground).
-- **Payload Size Constraints:** BLE advertisements (31 bytes) and ATT MTU limits data transfer.
-  - *Mitigation:* Extreme data minimization: binary encoding, field prioritization, dynamic field selection, lookup tables, truncated identifiers. Focus advertisements on discovery (`message_id`), fetch full (but still minimal) payload via GATT.
+- **Payload Size Constraints:** BLE advertisements limited to 31 bytes.
+  - *Mitigation:* Extreme data minimization, multi-part message system, binary encoding, field prioritization, dynamic field selection, lookup tables, truncated identifiers.
+- **Multi-part Message Assembly:** Ensuring complete message reception in correct order.
+  - *Mitigation:* Robust part numbering, assembly tracking, timeout mechanisms for incomplete messages, clear UI feedback on partial reception.
 - **Device Compatibility Matrix:** BLE variations across Android/iOS versions and hardware.
   - *Mitigation:* Implement graceful degradation, test on diverse hardware, document minimum requirements, runtime capability detection.
-- **Connection Management Complexity:** Handling concurrent scans, connection attempts, failures, and role switching.
-  - *Mitigation:* Robust state machine implementation, clear error handling, exponential backoff for retries.
+- **Forwarding Logic Complexity:** Avoiding broadcast storms while ensuring propagation.
+  - *Mitigation:* Single-forward rule, message deduplication, repeat flag control, timeout mechanisms.
 
 ## MVP Risk Factors
-- **Effective Propagation Range:** Reliant on Android device density and user foreground app usage.
-  - *Mitigation:* Target high-density scenarios (gates), encourage foreground usage, implement efficient echo rebroadcasting to maximize local spread.
-- **Message Delivery Reliability:** No guarantee of delivery; dependent on device proximity and successful GATT connection to an Android host.
-  - *Mitigation:* Message age indicators, clear UI feedback on connection status/failures, redundancy through multiple potential Android hosts (if available).
+- **Effective Propagation Range:** Reliant on device density and user foreground app usage.
+  - *Mitigation:* Target high-density scenarios (gates), encourage foreground usage, optimize forwarding logic to maximize spread.
+- **Message Delivery Reliability:** No guarantee of delivery; dependent on device proximity and forwarding chain integrity.
+  - *Mitigation:* Message age indicators, clear UI feedback on reception status, redundancy through multiple transmission attempts if critical.
 - **Information Density Constraints:** Limited payload affects message detail.
-  - *Mitigation:* Strict information prioritization, pre-defined message templates, context-aware field selection. UI must clearly present the limited info.
+  - *Mitigation:* Strict information prioritization, multi-part message system, pre-defined message templates, context-aware field selection. UI must clearly present the limited info.
 
 ## Resource Constraints
 - **Power Consumption:** Continuous scanning impacts battery.
@@ -276,15 +352,35 @@ Vuelink is an offline communication application designed for airline operators t
 
 ## BLE Technical Specifications
 - Advertisement packet maximum size: 31 bytes (hard limit).
-- ATT MTU size: Negotiated, typically 23 bytes default, up to ~512 bytes max (impacts GATT read speed).
-- Message preview: Included in advertisement only if space permits after essential IDs (~5-8 chars max).
-- Broadcast interval (Android Origin): 200-1000ms (configurable).
-- Scan window/interval (Clients): Configurable duty cycle (e.g., scan 300ms every 1000ms).
-- Connection timeout threshold: 5-10 seconds.
+- Message preview: Included in advertisement based on message type and remaining space.
+- Advertisement duration: ~3 seconds per packet.
+- Scan window/interval: Configurable duty cycle (e.g., scan 300ms every 1000ms).
+- Multi-part message timeout: 30-60 seconds waiting for all parts.
+
+## Message Types Detailed Specification
+1. **General Basic Message**
+   - Format: [message_type (2 bits)][message_id (8 bytes)][repeat_flag (1 bit)]
+   - Purpose: Reference pre-loaded content by ID
+   - Example: System notifications, common alerts
+
+2. **General Text Message**
+   - Format: [message_type (2 bits)][message_id (6 bytes)][part_number (4 bits)][total_parts (4 bits)][text_content (remaining bytes)]
+   - Purpose: Multi-part custom text messages
+   - Example: Ad-hoc announcements, custom notifications
+
+3. **Flight Update (Preloaded)**
+   - Format: [message_type (2 bits)][flight_id (3 bytes)][message_id (8 bytes)][repeat_flag (1 bit)]
+   - Purpose: Reference pre-loaded content specific to a flight
+   - Example: Standard gate changes, boarding announcements
+
+4. **Flight Update General**
+   - Format: [message_type (2 bits)][flight_id (3 bytes)][message_id (4 bytes)][part_number (4 bits)][total_parts (4 bits)][text_content (remaining bytes)]
+   - Purpose: Multi-part custom text messages for specific flights
+   - Example: Detailed flight-specific instructions, special circumstances
 
 ## Data Minimization Techniques
-- Binary field encoding (3-5 bits for enumerations).
-- Truncated UUIDs/Hashes in advertisements (e.g., 8 bytes).
+- Binary field encoding (2-4 bits for enumerations).
+- Truncated UUIDs/Hashes in advertisements (6-8 bytes).
 - Relative timestamp offsets (1 byte) instead of full timestamps.
 - Carrier/Airport code lookups (index into a predefined list).
 - Gate information compression (alphanumeric encoding).
@@ -298,18 +394,10 @@ Vuelink is an offline communication application designed for airline operators t
 4. Informational (general status updates)
 5. Low (amenity information, non-critical notifications) - Lowest Tx Priority
 
-## Data Field Prioritization (By Message Type - for payload construction)
-- **Emergency:** Action indicator, Location ID, Type Code
-- **Gate Change:** Flight ID, New Gate, Timing Info
-- **Boarding:** Flight ID, Gate, Boarding Group/Time
-- **Delay:** Flight ID, New Time, Reason Code (optional)
-- **Cancellation:** Flight ID, Rebooking Info Code
-
 ## Power Consumption Analysis (Estimates)
 - Continuous Scanning (Aggressive): ~6-10% battery/hour
-- Periodic Advertising (Android): ~2-4% battery/hour
+- Temporary Advertisement Bursts: ~1-2% battery/transmission sequence
 - Optimized Scanning (Balanced Duty Cycle): ~3-5% battery/hour
-- GATT Connection/Transfer: Brief spikes during active transfer.
 
 ## Testing Environment Specifications
 - High-density scenario: 50+ devices within 10m radius (mix of Android/iOS).

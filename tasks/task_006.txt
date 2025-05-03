@@ -1,43 +1,43 @@
 # Task ID: 6
-# Title: Implement Limited Echo Rebroadcasting
+# Title: Implement Message Forwarding System
 # Status: pending
 # Dependencies: 3, 4
 # Priority: medium
-# Description: Develop the optional, time-limited rebroadcasting functionality to help propagate messages through the mesh network.
+# Description: Develop the functionality to forward received messages to other devices based on message flags and configuration.
 # Details:
-Implement logic for devices to perform brief, time-limited rebroadcasts of received message advertisement packets using BLE libraries like flutter_blue_plus or flutter_reactive_ble. Configure rebroadcast to occur only after successfully fetching and caching a message. Limit rebroadcasts to 1-3 times over a few seconds to prevent network congestion. Create platform-specific implementations recognizing that iOS devices can only perform limited echo rebroadcasting while Android devices can act as full hosts. Implement controls to prevent continuous advertising except for origin Android devices or designated Android hosts. Add configuration options to enable/disable echo functionality based on network density and power considerations.
+Implement logic for devices to forward received messages based on repeat flags and configuration settings. Create a message deduplication system to prevent forwarding loops. Implement configurable forwarding limits including hop count and time-to-live. Develop intelligent forwarding that considers network density and battery level. Create analytics to track message propagation through the network. Add user configuration options to control forwarding behavior.
 
 # Test Strategy:
-Test rebroadcast behavior after message reception on both Android and iOS. Verify rebroadcast limits are enforced (1-3 times only). Measure power impact of rebroadcasting. Test propagation improvements in controlled multi-device environments. Validate that continuous advertising is properly restricted to origin/host Android devices only.
+Test forwarding behavior with various message types and repeat flags. Verify deduplication prevents forwarding loops. Test hop count and TTL limits are respected. Measure forwarding performance in different network densities. Validate that forwarding respects user configuration settings.
 
 # Subtasks:
-## 1. Design rebroadcast configuration system [pending]
+## 1. Design forwarding configuration system [pending]
 ### Dependencies: None
-### Description: Create a configuration system that allows enabling/disabling echo rebroadcasting functionality with appropriate default settings based on platform and network conditions.
+### Description: Create a configuration system that allows controlling message forwarding behavior with appropriate default settings.
 ### Details:
-Implement a RebroadcastConfig class with properties for: enabled/disabled state, maximum rebroadcast count (1-3), rebroadcast duration (in seconds), cooldown period between rebroadcasts, and device role (origin, echo, or host). Create platform-specific default configurations recognizing iOS limitations versus Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings.
+Implement a ForwardingConfig class with properties for: enabled/disabled state, maximum hop count, time-to-live, and forwarding delay. Create platform-specific default configurations recognizing iOS and Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings.
 
-## 2. Implement platform detection and capability management [pending]
+## 2. Implement message deduplication system [pending]
 ### Dependencies: 6.1
-### Description: Create a system to detect device platform and set appropriate rebroadcasting capabilities based on iOS and Android differences.
+### Description: Create a system to track seen messages and prevent forwarding loops.
 ### Details:
-Develop a PlatformCapabilityManager class that detects whether the device is running iOS or Android. For iOS devices, limit functionality to echo rebroadcasting only (no continuous advertising). For Android devices, enable full host capabilities including continuous advertising if configured. Implement methods to query device capabilities (canRebroadcast, canHostContinuously, etc.) that other components can use to make runtime decisions. Test thoroughly on both platforms to ensure correct capability detection.
+Develop a MessageTracker class that maintains a cache of recently seen message IDs. Implement efficient lookup to quickly determine if a message has been seen before. Create time-based expiration to manage cache size. Add metrics to track duplicate detection rates. Implement thread-safe operations for concurrent access. Test with simulated network scenarios to verify loop prevention.
 
-## 3. Develop message rebroadcast timing controller [pending]
+## 3. Develop message forwarding logic [pending]
 ### Dependencies: 6.1, 6.2
-### Description: Create a controller to manage the timing aspects of message rebroadcasting to prevent network congestion.
+### Description: Create the core functionality to forward messages based on repeat flags and configuration.
 ### Details:
-Implement a RebroadcastTimingController that handles scheduling of rebroadcasts with appropriate delays. Create logic to limit rebroadcasts to the configured maximum (1-3 times) with randomized short delays (0.5-2 seconds) between rebroadcasts to reduce collision probability. Implement a tracking system to record which messages have been rebroadcast and how many times. Add automatic termination of rebroadcasting after the configured time limit expires. Include safeguards to prevent rebroadcasting loops by checking message origin and hop count.
+Implement a MessageForwarder class that processes received messages and determines if they should be forwarded. Create logic to check repeat flags and only forward messages marked for repetition. Implement hop count tracking and enforcement of maximum hops. Add time-to-live checking to prevent forwarding expired messages. Create a forwarding queue to manage pending transmissions. Implement random delay before forwarding to reduce collision probability.
 
-## 4. Implement rebroadcast packet handling logic [pending]
-### Dependencies: 6.2, 6.3
-### Description: Develop the core logic for processing received messages and determining whether they should be rebroadcast based on configuration and platform capabilities.
+## 4. Implement intelligent forwarding optimization [pending]
+### Dependencies: 6.3
+### Description: Create adaptive forwarding behavior based on network conditions and device state.
 ### Details:
-Create a RebroadcastManager class that integrates with the existing message reception pipeline. Implement logic to trigger rebroadcasting only after successfully fetching and caching a complete message. Add message deduplication to prevent rebroadcasting messages already seen. Implement platform-specific advertising packet creation using flutter_blue_plus (for Android) and flutter_reactive_ble (for cross-platform support). Create a message queue system to handle multiple pending rebroadcasts efficiently. Include logging of rebroadcast activities for debugging and optimization.
+Develop a NetworkDensityMonitor that estimates local network density based on received message volume. Implement adaptive forwarding that reduces probability in dense networks. Create battery-aware forwarding that reduces activity at low battery levels. Implement priority-based forwarding that ensures important messages are forwarded even under restrictions. Add analytics to measure forwarding effectiveness and network propagation patterns.
 
-## 5. Integrate rebroadcasting with network monitoring and optimization [pending]
+## 5. Create forwarding analytics and visualization [pending]
 ### Dependencies: 6.3, 6.4
-### Description: Connect the rebroadcasting system with network monitoring to dynamically adjust behavior based on observed network conditions.
+### Description: Develop tools to track and visualize message propagation through the network.
 ### Details:
-Implement a NetworkDensityMonitor that tracks the frequency and volume of received messages to estimate network density. Create adaptive logic that can automatically adjust rebroadcast parameters (frequency, count) based on observed network conditions. Add battery-aware functionality that reduces rebroadcasting when device battery is low. Implement analytics to track rebroadcast effectiveness (how many unique devices received messages through rebroadcasts). Create a dashboard in the developer settings to visualize rebroadcast activity and network conditions. Finally, perform comprehensive testing in various network density scenarios to validate the system's behavior.
+Implement a ForwardingAnalytics class that tracks message propagation metrics. Create visualizations showing message spread through the network. Add metrics for forwarding efficiency, network density, and battery impact. Implement debug logging for forwarding decisions. Create a developer dashboard to monitor forwarding behavior in real-time. Add export functionality for offline analysis of forwarding patterns.
 

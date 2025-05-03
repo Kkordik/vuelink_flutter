@@ -9,6 +9,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  bluetooth_low_energy: ^6.0.2
+  permission_handler: ^11.3.1
+  device_info_plus: ^11.4.0
+  logging: ^1.2.0
+  crypto: ^3.0.3
+  battery_plus: ^5.0.3
+  ble_peripheral: ^2.4.0
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:

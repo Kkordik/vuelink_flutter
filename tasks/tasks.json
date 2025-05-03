@@ -2,72 +2,84 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Implement BLE Advertisement Transmission for Android",
-      "description": "Create the core functionality for Android devices to act as BLE Peripherals and GATT Servers, capable of broadcasting advertisement packets with message identifiers.",
+      "title": "Implement BLE Advertisement Transmission and Reception System",
+      "description": "Create a complete system for transmitting, receiving, and forwarding messages using only BLE advertisements, with support for different message types and multi-part messages.",
       "status": "pending",
       "dependencies": [],
       "priority": "high",
-      "details": "Implement using Flutter with BLE libraries like flutter_blue_plus or flutter_reactive_ble to minimize native code. Create a service that constructs BLE advertisement packets (≤31 bytes) containing the Vuelink service UUID, message_id (truncated UUID/hash, 8 bytes), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Configure periodic broadcasting at 500ms-1s intervals. Implement GATT Server functionality to host the full message payload as a characteristic that can be read by clients. Ensure the implementation follows the platform-specific role where only Android devices can act as Peripherals/GATT Servers.",
-      "testStrategy": "Test advertisement packet construction with correct byte structure. Verify advertisement transmission using a secondary device to scan and detect packets. Validate GATT Server setup with characteristic UUID accessibility. Measure broadcast intervals for accuracy and power consumption.",
+      "details": "Implement using Flutter with BLE libraries for both advertisement transmission and scanning. Create a service that constructs BLE advertisement packets containing structured message data based on different message types: 1. General Basic Message (preloaded with message ID and repeat flag) 2. General Text Message (multi-part with text content) 3. Flight Update Message (preloaded with flight ID and message ID) 4. Flight Update General (multi-part with flight ID and text content) Implement a transmission strategy that broadcasts each advertisement for approximately 3 seconds before stopping. For multi-part messages, send each part as a separate, sequential advertisement. Develop a receiving system that scans for advertisements, processes them according to type, and forwards them once (unless already seen or configured not to repeat). Implement reassembly of multi-part messages before processing or forwarding them.",
+      "testStrategy": "Test advertisement packet construction for all message types. Verify transmission and reception between multiple devices. Test multi-part message assembly and validation. Confirm forwarding behavior respects repeat flags and deduplication.",
       "subtasks": [
         {
           "id": 1,
           "title": "Set up Flutter BLE peripheral library integration",
           "description": "Research, select, and integrate the appropriate Flutter BLE library that supports peripheral mode on Android. Configure project dependencies and permissions.",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [],
           "details": "Evaluate flutter_blue_plus, flutter_reactive_ble, and other options to determine which best supports Android peripheral mode. Add the chosen library to pubspec.yaml. Configure AndroidManifest.xml with required BLE permissions (BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, etc.). Create a BleService class that will serve as the interface for all BLE functionality. Test basic BLE availability detection on Android devices."
         },
         {
           "id": 2,
-          "title": "Design and implement BLE advertisement packet structure",
-          "description": "Create the data structure for BLE advertisement packets within the 31-byte limit, including service UUID, message ID, sender ID, message type, and priority.",
-          "status": "pending",
+          "title": "Design and implement message type data structures",
+          "description": "Create the data structures for different message types including General Basic, General Text, Flight Update, and Flight Update General messages.",
+          "status": "in-progress",
           "dependencies": [
             1
           ],
-          "details": "Implement a PacketBuilder class that constructs advertisement data with: Vuelink service UUID (16 bytes), message_id (8 bytes, truncated UUID/hash), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Create utility methods to pack these fields efficiently into the 31-byte limit. Implement validation to ensure packet size constraints are met. Add unit tests to verify correct packet construction and byte allocation."
+          "details": "Implement a MessageTypeFactory class that defines the structure for each message type. Create data models for: General Basic Message (message ID, repeat flag), General Text Message (message ID, part number, total parts, text content), Flight Update Message (flight ID, message ID, update type), and Flight Update General (flight ID, message ID, part number, total parts, text content). Implement validation for each message type to ensure data integrity. Add serialization/deserialization methods to convert between message objects and byte arrays for advertisement packets."
         },
         {
           "id": 3,
-          "title": "Implement BLE advertisement broadcasting functionality",
-          "description": "Create the core functionality to start and stop broadcasting BLE advertisements at configurable intervals.",
+          "title": "Implement BLE advertisement packet construction",
+          "description": "Create the functionality to construct BLE advertisement packets for different message types within size constraints.",
           "status": "pending",
           "dependencies": [
             2
           ],
-          "details": "Extend the BleService to include startAdvertising() and stopAdvertising() methods. Implement periodic broadcasting with configurable intervals (default 500ms-1s). Add battery-aware throttling to reduce frequency when battery is low. Create a background service mechanism to maintain advertisements when app is in background (if supported by the chosen library). Implement error handling for devices that don't support peripheral mode. Add logging for debugging advertisement states."
+          "details": "Implement a PacketBuilder class that constructs advertisement data for each message type. Create efficient byte packing methods to maximize data within advertisement size limits. Implement multi-part message splitting for text content that exceeds single packet size. Create utility methods to add message type identifiers, sequence numbers for multi-part messages, and repeat flags. Implement validation to ensure packet size constraints are met. Add unit tests to verify correct packet construction and byte allocation for each message type."
         },
         {
           "id": 4,
-          "title": "Implement GATT Server service and characteristic definition",
-          "description": "Define the GATT service structure with characteristics to store the full message payload that can be read by clients.",
+          "title": "Implement BLE advertisement transmission functionality",
+          "description": "Create the core functionality to transmit BLE advertisements with timed broadcasting periods.",
           "status": "pending",
           "dependencies": [
             3
           ],
-          "details": "Create a GattServerManager class to handle GATT server operations. Define the Vuelink service UUID and characteristic UUIDs for message payload. Implement methods to create and configure the GATT service with appropriate properties (read, notify). Create data structures to store the full message payload that exceeds advertisement size limits. Implement permission handling for characteristic access. Add unit tests to verify service and characteristic creation."
+          "details": "Extend the BleService to include transmitMessage() methods for each message type. Implement timed broadcasting that advertises each packet for approximately 3 seconds before stopping. Create sequential transmission logic for multi-part messages. Implement transmission queuing for handling multiple messages. Add battery-aware throttling to reduce frequency when battery is low. Create a background service mechanism to maintain advertisements when app is in background (if supported by the chosen library). Implement error handling for devices that don't support peripheral mode. Add logging for debugging advertisement states."
         },
         {
           "id": 5,
-          "title": "Implement GATT Server connection and read request handling",
-          "description": "Add functionality to accept connections from clients and handle read requests for the message payload characteristic.",
+          "title": "Implement BLE scanning and message reception",
+          "description": "Develop the functionality to scan for and receive BLE advertisements from other devices.",
           "status": "pending",
           "dependencies": [
-            4
+            3
           ],
-          "details": "Extend GattServerManager to handle client connection events. Implement callbacks for characteristic read requests. Create a secure mechanism to serve the full message payload when requested. Add connection management to handle multiple simultaneous client connections. Implement timeout handling for incomplete connections. Add event listeners for connection state changes. Create a message cache to efficiently serve repeated requests for the same data."
+          "details": "Extend the BleService to include startScanning() and stopScanning() methods. Implement advertisement data parsing to extract message type and content. Create a message cache to track received message IDs and prevent duplicates. Implement multi-part message tracking and reassembly. Add callbacks to notify application code when complete messages are received. Create power-efficient scanning strategies with appropriate scan intervals and windows. Include platform-specific scanning optimizations for Android and iOS."
         },
         {
           "id": 6,
-          "title": "Create high-level API and platform-specific detection",
-          "description": "Develop a simple API for application code to use the BLE advertisement functionality and implement platform detection to ensure the feature is only available on Android.",
+          "title": "Implement message forwarding functionality",
+          "description": "Create the system for forwarding received messages based on repeat flags and deduplication logic.",
           "status": "pending",
           "dependencies": [
-            3,
+            4,
             5
           ],
-          "details": "Create a VuelinkBleManager class with a clean API for application code. Implement methods like broadcastMessage(messageId, priority, payload) that handle all the low-level details. Add platform detection to disable peripheral functionality on iOS. Create a capability detection system to handle different Android versions and hardware capabilities. Implement graceful degradation for unsupported devices. Add comprehensive documentation and usage examples. Create integration tests that verify the entire flow from message creation to advertisement to GATT server read."
+          "details": "Implement a MessageForwardingManager class to handle message retransmission. Create logic to check repeat flags and only forward messages marked for repetition. Implement a seen-message cache to prevent forwarding duplicates. Add configurable forwarding behavior (enable/disable, maximum hops, etc.). Create a forwarding queue to manage pending retransmissions. Implement platform-specific forwarding limitations based on device capabilities. Add analytics to track message propagation through the network."
+        },
+        {
+          "id": 7,
+          "title": "Create high-level API and platform-specific detection",
+          "description": "Develop a simple API for application code to use the BLE messaging functionality and implement platform detection to ensure features work correctly on different devices.",
+          "status": "pending",
+          "dependencies": [
+            4,
+            5,
+            6
+          ],
+          "details": "Create a VuelinkBleManager class with a clean API for application code. Implement methods like sendBasicMessage(), sendTextMessage(), sendFlightUpdate() that handle all the low-level details. Add platform detection to handle different capabilities between iOS and Android. Create a capability detection system to handle different Android versions and hardware capabilities. Implement graceful degradation for unsupported devices. Add comprehensive documentation and usage examples. Create integration tests that verify the entire flow from message creation to advertisement to reception and forwarding."
         }
       ]
     },
@@ -134,76 +146,68 @@
     },
     {
       "id": 3,
-      "title": "Implement GATT Client and Message Fetching",
-      "description": "Develop the GATT Client functionality for both Android and iOS to connect to advertising Android devices and retrieve full message payloads.",
+      "title": "Implement Message Parsing and Reassembly System",
+      "description": "Develop functionality to parse, validate, and reassemble multi-part messages received through BLE advertisements.",
       "status": "pending",
       "dependencies": [
         1,
         2
       ],
       "priority": "high",
-      "details": "Implement GATT Client functionality using BLE libraries like flutter_blue_plus or flutter_reactive_ble to connect to advertising Android devices upon detecting a new message_id. Create connection management logic with timeout handling (5-10 seconds) and retry mechanisms. Develop the protocol for requesting and downloading the full message payload from the GATT Server's characteristic. Implement proper connection lifecycle management including connection establishment, data transfer, and disconnection. Handle platform-specific connection behaviors and ensure iOS devices can properly connect to Android GATT Servers.",
-      "testStrategy": "Test GATT connection establishment between different device combinations (Android-to-Android and iOS-to-Android). Verify successful payload retrieval with various payload sizes. Validate connection timeout and retry mechanisms. Measure connection success rates in different environmental conditions. Test error handling during connection failures.",
+      "details": "Create a message parsing system that can identify and process different message types from BLE advertisements. Implement a reassembly mechanism for multi-part messages that tracks message parts, validates completeness, and reconstructs the original payload. Develop validation logic to ensure message integrity and handle corrupted or missing parts. Create a message cache to track recently seen messages and prevent duplicate processing. Implement timeout handling for incomplete multi-part messages.",
+      "testStrategy": "Test parsing of all message types from raw advertisement data. Verify reassembly of multi-part messages with various payload sizes. Test handling of out-of-order message parts. Validate timeout behavior for incomplete messages. Test deduplication logic with repeated messages.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Set up BLE client infrastructure",
-          "description": "Create the foundation classes and interfaces for the BLE client functionality that will be used across both platforms",
+          "title": "Implement message type identification and parsing",
+          "description": "Create functionality to identify message types from advertisement data and parse them into appropriate data structures",
           "status": "pending",
           "dependencies": [],
-          "details": "Implement a BleClient class with platform-agnostic interfaces for device scanning, connection management, and data transfer. Define the message protocol structure for requesting and receiving message payloads. Create interfaces for connection callbacks, timeout handling, and error management. Select and integrate the appropriate BLE library (flutter_blue_plus or flutter_reactive_ble) and set up the necessary permissions in both Android and iOS configurations."
+          "details": "Develop a MessageParser class that can identify the four message types from raw advertisement data. Implement type-specific parsing logic for each message format. Create data validation to ensure required fields are present and valid. Implement error handling for malformed messages. Create unit tests with sample advertisement data for each message type. Integrate with the BLE scanning system to process incoming advertisements automatically."
         },
         {
           "id": 2,
-          "title": "Implement device scanning and discovery",
-          "description": "Create functionality to scan for and discover advertising Android devices with message_id",
+          "title": "Develop multi-part message tracking and reassembly",
+          "description": "Create a system to track parts of multi-part messages and reassemble them when complete",
           "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Implement BLE scanning functionality to detect advertising Android devices. Create filters to identify devices broadcasting the application's specific service UUID. Parse advertisement data to extract message_id from the manufacturer data or service data. Implement scan result handling to trigger connection attempts when new message_ids are discovered. Add power-efficient scanning strategies with appropriate scan intervals and windows. Include platform-specific scanning optimizations for Android and iOS."
+          "details": "Implement a MessageReassembler class that tracks parts of multi-part messages by message ID. Create data structures to store message parts until all are received. Implement part validation to ensure correct sequence and prevent duplicates. Add timeout handling to clean up incomplete messages after a configurable period. Create callbacks to notify when complete messages are assembled. Implement error handling for missing or corrupted parts. Add logging for reassembly process debugging."
         },
         {
           "id": 3,
-          "title": "Develop connection management with timeout and retry",
-          "description": "Create robust connection handling with timeout detection and retry mechanisms",
+          "title": "Implement message deduplication and caching",
+          "description": "Create a caching system to track seen messages and prevent duplicate processing",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop a MessageCache class that stores recently seen message IDs. Implement time-based cache expiration to manage memory usage. Create efficient lookup methods to quickly check if a message has been seen before. Add configuration options for cache size and expiration time. Implement thread-safe operations for concurrent access. Create metrics to track cache hit/miss rates. Test with high message volumes to ensure performance."
+        },
+        {
+          "id": 4,
+          "title": "Implement message validation and integrity checking",
+          "description": "Create robust validation logic to ensure message integrity and handle corrupted data",
           "status": "pending",
           "dependencies": [
             1,
             2
           ],
-          "details": "Implement connection establishment to discovered devices with proper error handling. Create a timeout system that cancels connection attempts after 5-10 seconds. Develop a retry mechanism that attempts reconnection with exponential backoff (e.g., 1s, 2s, 4s delays between attempts). Implement connection state monitoring to detect disconnections. Create a connection queue to manage multiple pending connections. Handle platform-specific connection behaviors, particularly addressing iOS background connection limitations."
-        },
-        {
-          "id": 4,
-          "title": "Implement GATT service and characteristic discovery",
-          "description": "Create functionality to discover the required GATT services and characteristics on connected devices",
-          "status": "pending",
-          "dependencies": [
-            3
-          ],
-          "details": "Implement service discovery on successfully connected devices. Create characteristic discovery within the application's specific service. Implement caching of service and characteristic UUIDs to optimize reconnections. Add validation to ensure the required characteristics for message transfer are available. Handle discovery failures with appropriate error reporting. Implement platform-specific discovery behaviors, particularly addressing iOS discovery limitations."
+          "details": "Implement comprehensive validation for each message type to ensure data integrity. Create checksum or hash verification if included in the message format. Implement field validation for expected ranges and formats. Add handling for corrupted or invalid messages. Create a validation reporting system to track and analyze validation failures. Implement graceful degradation for partially valid messages. Test with deliberately corrupted data to verify error handling."
         },
         {
           "id": 5,
-          "title": "Develop message payload transfer protocol",
-          "description": "Implement the protocol for requesting and receiving full message payloads from the GATT server",
+          "title": "Develop message processing pipeline",
+          "description": "Create an end-to-end processing pipeline that handles messages from reception through parsing, validation, and delivery",
           "status": "pending",
           "dependencies": [
+            1,
+            2,
+            3,
             4
           ],
-          "details": "Implement characteristic read/write operations to request message data using the discovered message_id. Create a chunking mechanism to handle messages larger than the MTU size (typically 20-23 bytes). Implement reassembly of chunked messages into complete payloads. Add data validation with checksums or other integrity verification. Create progress tracking for multi-chunk transfers. Implement error handling for failed or incomplete transfers. Optimize transfer speeds while maintaining reliability."
-        },
-        {
-          "id": 6,
-          "title": "Implement connection lifecycle management",
-          "description": "Create proper connection lifecycle handling including disconnection and resource cleanup",
-          "status": "pending",
-          "dependencies": [
-            3,
-            5
-          ],
-          "details": "Implement proper disconnection after successful message transfer. Create resource cleanup to prevent memory leaks and excessive battery usage. Implement connection state persistence to handle app backgrounding or process death. Add graceful handling of unexpected disconnections. Create a connection priority management system to optimize for either speed or battery efficiency. Implement platform-specific disconnection behaviors, particularly addressing iOS background disconnection handling. Add comprehensive logging for debugging connection issues."
+          "details": "Implement a MessageProcessor class that orchestrates the entire message handling pipeline. Create a queue-based processing system to handle high message volumes. Implement priority handling for different message types. Add hooks for message-type-specific processing logic. Create a comprehensive event system to notify application components about new messages. Implement error handling and recovery at each pipeline stage. Add performance metrics to identify bottlenecks. Test the complete pipeline with various message scenarios."
         }
       ]
     },
@@ -327,67 +331,66 @@
     },
     {
       "id": 6,
-      "title": "Implement Limited Echo Rebroadcasting",
-      "description": "Develop the optional, time-limited rebroadcasting functionality to help propagate messages through the mesh network.",
+      "title": "Implement Message Forwarding System",
+      "description": "Develop the functionality to forward received messages to other devices based on message flags and configuration.",
       "status": "pending",
       "dependencies": [
         3,
         4
       ],
       "priority": "medium",
-      "details": "Implement logic for devices to perform brief, time-limited rebroadcasts of received message advertisement packets using BLE libraries like flutter_blue_plus or flutter_reactive_ble. Configure rebroadcast to occur only after successfully fetching and caching a message. Limit rebroadcasts to 1-3 times over a few seconds to prevent network congestion. Create platform-specific implementations recognizing that iOS devices can only perform limited echo rebroadcasting while Android devices can act as full hosts. Implement controls to prevent continuous advertising except for origin Android devices or designated Android hosts. Add configuration options to enable/disable echo functionality based on network density and power considerations.",
-      "testStrategy": "Test rebroadcast behavior after message reception on both Android and iOS. Verify rebroadcast limits are enforced (1-3 times only). Measure power impact of rebroadcasting. Test propagation improvements in controlled multi-device environments. Validate that continuous advertising is properly restricted to origin/host Android devices only.",
+      "details": "Implement logic for devices to forward received messages based on repeat flags and configuration settings. Create a message deduplication system to prevent forwarding loops. Implement configurable forwarding limits including hop count and time-to-live. Develop intelligent forwarding that considers network density and battery level. Create analytics to track message propagation through the network. Add user configuration options to control forwarding behavior.",
+      "testStrategy": "Test forwarding behavior with various message types and repeat flags. Verify deduplication prevents forwarding loops. Test hop count and TTL limits are respected. Measure forwarding performance in different network densities. Validate that forwarding respects user configuration settings.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Design rebroadcast configuration system",
-          "description": "Create a configuration system that allows enabling/disabling echo rebroadcasting functionality with appropriate default settings based on platform and network conditions.",
+          "title": "Design forwarding configuration system",
+          "description": "Create a configuration system that allows controlling message forwarding behavior with appropriate default settings.",
           "status": "pending",
           "dependencies": [],
-          "details": "Implement a RebroadcastConfig class with properties for: enabled/disabled state, maximum rebroadcast count (1-3), rebroadcast duration (in seconds), cooldown period between rebroadcasts, and device role (origin, echo, or host). Create platform-specific default configurations recognizing iOS limitations versus Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings."
+          "details": "Implement a ForwardingConfig class with properties for: enabled/disabled state, maximum hop count, time-to-live, and forwarding delay. Create platform-specific default configurations recognizing iOS and Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings."
         },
         {
           "id": 2,
-          "title": "Implement platform detection and capability management",
-          "description": "Create a system to detect device platform and set appropriate rebroadcasting capabilities based on iOS and Android differences.",
+          "title": "Implement message deduplication system",
+          "description": "Create a system to track seen messages and prevent forwarding loops.",
           "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Develop a PlatformCapabilityManager class that detects whether the device is running iOS or Android. For iOS devices, limit functionality to echo rebroadcasting only (no continuous advertising). For Android devices, enable full host capabilities including continuous advertising if configured. Implement methods to query device capabilities (canRebroadcast, canHostContinuously, etc.) that other components can use to make runtime decisions. Test thoroughly on both platforms to ensure correct capability detection."
+          "details": "Develop a MessageTracker class that maintains a cache of recently seen message IDs. Implement efficient lookup to quickly determine if a message has been seen before. Create time-based expiration to manage cache size. Add metrics to track duplicate detection rates. Implement thread-safe operations for concurrent access. Test with simulated network scenarios to verify loop prevention."
         },
         {
           "id": 3,
-          "title": "Develop message rebroadcast timing controller",
-          "description": "Create a controller to manage the timing aspects of message rebroadcasting to prevent network congestion.",
+          "title": "Develop message forwarding logic",
+          "description": "Create the core functionality to forward messages based on repeat flags and configuration.",
           "status": "pending",
           "dependencies": [
             1,
             2
           ],
-          "details": "Implement a RebroadcastTimingController that handles scheduling of rebroadcasts with appropriate delays. Create logic to limit rebroadcasts to the configured maximum (1-3 times) with randomized short delays (0.5-2 seconds) between rebroadcasts to reduce collision probability. Implement a tracking system to record which messages have been rebroadcast and how many times. Add automatic termination of rebroadcasting after the configured time limit expires. Include safeguards to prevent rebroadcasting loops by checking message origin and hop count."
+          "details": "Implement a MessageForwarder class that processes received messages and determines if they should be forwarded. Create logic to check repeat flags and only forward messages marked for repetition. Implement hop count tracking and enforcement of maximum hops. Add time-to-live checking to prevent forwarding expired messages. Create a forwarding queue to manage pending transmissions. Implement random delay before forwarding to reduce collision probability."
         },
         {
           "id": 4,
-          "title": "Implement rebroadcast packet handling logic",
-          "description": "Develop the core logic for processing received messages and determining whether they should be rebroadcast based on configuration and platform capabilities.",
+          "title": "Implement intelligent forwarding optimization",
+          "description": "Create adaptive forwarding behavior based on network conditions and device state.",
           "status": "pending",
           "dependencies": [
-            2,
             3
           ],
-          "details": "Create a RebroadcastManager class that integrates with the existing message reception pipeline. Implement logic to trigger rebroadcasting only after successfully fetching and caching a complete message. Add message deduplication to prevent rebroadcasting messages already seen. Implement platform-specific advertising packet creation using flutter_blue_plus (for Android) and flutter_reactive_ble (for cross-platform support). Create a message queue system to handle multiple pending rebroadcasts efficiently. Include logging of rebroadcast activities for debugging and optimization."
+          "details": "Develop a NetworkDensityMonitor that estimates local network density based on received message volume. Implement adaptive forwarding that reduces probability in dense networks. Create battery-aware forwarding that reduces activity at low battery levels. Implement priority-based forwarding that ensures important messages are forwarded even under restrictions. Add analytics to measure forwarding effectiveness and network propagation patterns."
         },
         {
           "id": 5,
-          "title": "Integrate rebroadcasting with network monitoring and optimization",
-          "description": "Connect the rebroadcasting system with network monitoring to dynamically adjust behavior based on observed network conditions.",
+          "title": "Create forwarding analytics and visualization",
+          "description": "Develop tools to track and visualize message propagation through the network.",
           "status": "pending",
           "dependencies": [
             3,
             4
           ],
-          "details": "Implement a NetworkDensityMonitor that tracks the frequency and volume of received messages to estimate network density. Create adaptive logic that can automatically adjust rebroadcast parameters (frequency, count) based on observed network conditions. Add battery-aware functionality that reduces rebroadcasting when device battery is low. Implement analytics to track rebroadcast effectiveness (how many unique devices received messages through rebroadcasts). Create a dashboard in the developer settings to visualize rebroadcast activity and network conditions. Finally, perform comprehensive testing in various network density scenarios to validate the system's behavior."
+          "details": "Implement a ForwardingAnalytics class that tracks message propagation metrics. Create visualizations showing message spread through the network. Add metrics for forwarding efficiency, network density, and battery impact. Implement debug logging for forwarding decisions. Create a developer dashboard to monitor forwarding behavior in real-time. Add export functionality for offline analysis of forwarding patterns."
         }
       ]
     },
