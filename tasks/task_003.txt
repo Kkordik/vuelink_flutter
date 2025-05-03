@@ -1,0 +1,49 @@
+# Task ID: 3
+# Title: Implement GATT Client and Message Fetching
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Develop the GATT Client functionality for both Android and iOS to connect to advertising Android devices and retrieve full message payloads.
+# Details:
+Implement GATT Client functionality using BLE libraries like flutter_blue_plus or flutter_reactive_ble to connect to advertising Android devices upon detecting a new message_id. Create connection management logic with timeout handling (5-10 seconds) and retry mechanisms. Develop the protocol for requesting and downloading the full message payload from the GATT Server's characteristic. Implement proper connection lifecycle management including connection establishment, data transfer, and disconnection. Handle platform-specific connection behaviors and ensure iOS devices can properly connect to Android GATT Servers.
+
+# Test Strategy:
+Test GATT connection establishment between different device combinations (Android-to-Android and iOS-to-Android). Verify successful payload retrieval with various payload sizes. Validate connection timeout and retry mechanisms. Measure connection success rates in different environmental conditions. Test error handling during connection failures.
+
+# Subtasks:
+## 1. Set up BLE client infrastructure [pending]
+### Dependencies: None
+### Description: Create the foundation classes and interfaces for the BLE client functionality that will be used across both platforms
+### Details:
+Implement a BleClient class with platform-agnostic interfaces for device scanning, connection management, and data transfer. Define the message protocol structure for requesting and receiving message payloads. Create interfaces for connection callbacks, timeout handling, and error management. Select and integrate the appropriate BLE library (flutter_blue_plus or flutter_reactive_ble) and set up the necessary permissions in both Android and iOS configurations.
+
+## 2. Implement device scanning and discovery [pending]
+### Dependencies: 3.1
+### Description: Create functionality to scan for and discover advertising Android devices with message_id
+### Details:
+Implement BLE scanning functionality to detect advertising Android devices. Create filters to identify devices broadcasting the application's specific service UUID. Parse advertisement data to extract message_id from the manufacturer data or service data. Implement scan result handling to trigger connection attempts when new message_ids are discovered. Add power-efficient scanning strategies with appropriate scan intervals and windows. Include platform-specific scanning optimizations for Android and iOS.
+
+## 3. Develop connection management with timeout and retry [pending]
+### Dependencies: 3.1, 3.2
+### Description: Create robust connection handling with timeout detection and retry mechanisms
+### Details:
+Implement connection establishment to discovered devices with proper error handling. Create a timeout system that cancels connection attempts after 5-10 seconds. Develop a retry mechanism that attempts reconnection with exponential backoff (e.g., 1s, 2s, 4s delays between attempts). Implement connection state monitoring to detect disconnections. Create a connection queue to manage multiple pending connections. Handle platform-specific connection behaviors, particularly addressing iOS background connection limitations.
+
+## 4. Implement GATT service and characteristic discovery [pending]
+### Dependencies: 3.3
+### Description: Create functionality to discover the required GATT services and characteristics on connected devices
+### Details:
+Implement service discovery on successfully connected devices. Create characteristic discovery within the application's specific service. Implement caching of service and characteristic UUIDs to optimize reconnections. Add validation to ensure the required characteristics for message transfer are available. Handle discovery failures with appropriate error reporting. Implement platform-specific discovery behaviors, particularly addressing iOS discovery limitations.
+
+## 5. Develop message payload transfer protocol [pending]
+### Dependencies: 3.4
+### Description: Implement the protocol for requesting and receiving full message payloads from the GATT server
+### Details:
+Implement characteristic read/write operations to request message data using the discovered message_id. Create a chunking mechanism to handle messages larger than the MTU size (typically 20-23 bytes). Implement reassembly of chunked messages into complete payloads. Add data validation with checksums or other integrity verification. Create progress tracking for multi-chunk transfers. Implement error handling for failed or incomplete transfers. Optimize transfer speeds while maintaining reliability.
+
+## 6. Implement connection lifecycle management [pending]
+### Dependencies: 3.3, 3.5
+### Description: Create proper connection lifecycle handling including disconnection and resource cleanup
+### Details:
+Implement proper disconnection after successful message transfer. Create resource cleanup to prevent memory leaks and excessive battery usage. Implement connection state persistence to handle app backgrounding or process death. Add graceful handling of unexpected disconnections. Create a connection priority management system to optimize for either speed or battery efficiency. Implement platform-specific disconnection behaviors, particularly addressing iOS background disconnection handling. Add comprehensive logging for debugging connection issues.
+

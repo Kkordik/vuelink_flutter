@@ -1,0 +1,37 @@
+# Task ID: 5
+# Title: Implement Minimal Data Minimization Framework
+# Status: pending
+# Dependencies: 4
+# Priority: medium
+# Description: Develop a simple, minimal data minimization system to optimize message payloads for efficient BLE transmission.
+# Details:
+Implement basic binary encoding for essential message fields only. Create simple lookup tables for the most common values (airline codes, airport codes). Use straightforward timestamp encoding with minimal bytes. Focus on the most critical fields for each message type, omitting non-essential data. Keep the implementation simple and maintainable rather than pursuing maximum compression. Ensure all advertisement packets remain under 31 bytes by limiting included fields rather than using complex compression.
+
+# Test Strategy:
+Test basic encoding/decoding of essential message fields. Verify data integrity is maintained with the simplified approach. Confirm lookup tables work for common values. Validate that all packets meet size constraints with the minimal encoding approach.
+
+# Subtasks:
+## 1. Define Essential Message Fields and Create Field Encoding Scheme [pending]
+### Dependencies: None
+### Description: Analyze message types and identify only the essential fields needed for each type. Create a binary encoding scheme for these fields.
+### Details:
+Review all message types (flight status, gate info, etc.) and determine the minimum required fields for each. Create a mapping document that defines which fields are essential vs. optional. Design a binary encoding scheme that assigns bit positions or byte positions to each field type. Define how each data type will be encoded (integers, strings, enums, etc.) with minimal bytes. Document the encoding scheme with examples for each message type.
+
+## 2. Implement Lookup Tables for Common Values [pending]
+### Dependencies: 5.1
+### Description: Create and implement lookup tables for frequently used values like airline codes and airport codes to reduce payload size.
+### Details:
+Compile lists of common airline codes (e.g., AA, UA, DL) and airport codes (e.g., LAX, JFK, ORD). Assign short numeric IDs (1-byte where possible) to each common value. Create bidirectional lookup tables for encoding and decoding. Implement functions to convert between the full codes and their compressed representations. Include a fallback mechanism for uncommon codes that aren't in the lookup tables. Test the lookup system with various inputs to verify correctness.
+
+## 3. Develop Timestamp Encoding System [pending]
+### Dependencies: 5.1
+### Description: Create an efficient timestamp encoding system that uses minimal bytes while maintaining necessary precision.
+### Details:
+Analyze timestamp requirements across message types. Design a compact timestamp format that uses relative time where possible (e.g., minutes since midnight or offset from a base time). Implement encoding that uses 2-4 bytes instead of standard 8-byte timestamps. Create functions to convert between standard timestamps and the compact format. Consider different precision needs for different message types (some may need seconds, others only minutes). Test the timestamp encoding with various time values to ensure accuracy and proper handling of edge cases.
+
+## 4. Build Message Encoder/Decoder with Size Validation [pending]
+### Dependencies: 5.1, 5.2, 5.3
+### Description: Implement the complete encoding and decoding system that combines all components and ensures packets stay under 31 bytes.
+### Details:
+Create encoder functions that convert full message objects to binary-encoded payloads using the field definitions, lookup tables, and timestamp encoding. Implement decoder functions that reverse the process. Add size validation to ensure all encoded messages remain under 31 bytes. Implement a fallback mechanism that further reduces included fields if a message exceeds the size limit. Create a priority system for fields so less important ones are dropped first. Add logging to track encoding efficiency. Create comprehensive tests for the entire system with various message types and edge cases. Document the encoding/decoding API for other developers.
+

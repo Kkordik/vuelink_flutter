@@ -1,0 +1,43 @@
+# Task ID: 6
+# Title: Implement Limited Echo Rebroadcasting
+# Status: pending
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Develop the optional, time-limited rebroadcasting functionality to help propagate messages through the mesh network.
+# Details:
+Implement logic for devices to perform brief, time-limited rebroadcasts of received message advertisement packets using BLE libraries like flutter_blue_plus or flutter_reactive_ble. Configure rebroadcast to occur only after successfully fetching and caching a message. Limit rebroadcasts to 1-3 times over a few seconds to prevent network congestion. Create platform-specific implementations recognizing that iOS devices can only perform limited echo rebroadcasting while Android devices can act as full hosts. Implement controls to prevent continuous advertising except for origin Android devices or designated Android hosts. Add configuration options to enable/disable echo functionality based on network density and power considerations.
+
+# Test Strategy:
+Test rebroadcast behavior after message reception on both Android and iOS. Verify rebroadcast limits are enforced (1-3 times only). Measure power impact of rebroadcasting. Test propagation improvements in controlled multi-device environments. Validate that continuous advertising is properly restricted to origin/host Android devices only.
+
+# Subtasks:
+## 1. Design rebroadcast configuration system [pending]
+### Dependencies: None
+### Description: Create a configuration system that allows enabling/disabling echo rebroadcasting functionality with appropriate default settings based on platform and network conditions.
+### Details:
+Implement a RebroadcastConfig class with properties for: enabled/disabled state, maximum rebroadcast count (1-3), rebroadcast duration (in seconds), cooldown period between rebroadcasts, and device role (origin, echo, or host). Create platform-specific default configurations recognizing iOS limitations versus Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings.
+
+## 2. Implement platform detection and capability management [pending]
+### Dependencies: 6.1
+### Description: Create a system to detect device platform and set appropriate rebroadcasting capabilities based on iOS and Android differences.
+### Details:
+Develop a PlatformCapabilityManager class that detects whether the device is running iOS or Android. For iOS devices, limit functionality to echo rebroadcasting only (no continuous advertising). For Android devices, enable full host capabilities including continuous advertising if configured. Implement methods to query device capabilities (canRebroadcast, canHostContinuously, etc.) that other components can use to make runtime decisions. Test thoroughly on both platforms to ensure correct capability detection.
+
+## 3. Develop message rebroadcast timing controller [pending]
+### Dependencies: 6.1, 6.2
+### Description: Create a controller to manage the timing aspects of message rebroadcasting to prevent network congestion.
+### Details:
+Implement a RebroadcastTimingController that handles scheduling of rebroadcasts with appropriate delays. Create logic to limit rebroadcasts to the configured maximum (1-3 times) with randomized short delays (0.5-2 seconds) between rebroadcasts to reduce collision probability. Implement a tracking system to record which messages have been rebroadcast and how many times. Add automatic termination of rebroadcasting after the configured time limit expires. Include safeguards to prevent rebroadcasting loops by checking message origin and hop count.
+
+## 4. Implement rebroadcast packet handling logic [pending]
+### Dependencies: 6.2, 6.3
+### Description: Develop the core logic for processing received messages and determining whether they should be rebroadcast based on configuration and platform capabilities.
+### Details:
+Create a RebroadcastManager class that integrates with the existing message reception pipeline. Implement logic to trigger rebroadcasting only after successfully fetching and caching a complete message. Add message deduplication to prevent rebroadcasting messages already seen. Implement platform-specific advertising packet creation using flutter_blue_plus (for Android) and flutter_reactive_ble (for cross-platform support). Create a message queue system to handle multiple pending rebroadcasts efficiently. Include logging of rebroadcast activities for debugging and optimization.
+
+## 5. Integrate rebroadcasting with network monitoring and optimization [pending]
+### Dependencies: 6.3, 6.4
+### Description: Connect the rebroadcasting system with network monitoring to dynamically adjust behavior based on observed network conditions.
+### Details:
+Implement a NetworkDensityMonitor that tracks the frequency and volume of received messages to estimate network density. Create adaptive logic that can automatically adjust rebroadcast parameters (frequency, count) based on observed network conditions. Add battery-aware functionality that reduces rebroadcasting when device battery is low. Implement analytics to track rebroadcast effectiveness (how many unique devices received messages through rebroadcasts). Create a dashboard in the developer settings to visualize rebroadcast activity and network conditions. Finally, perform comprehensive testing in various network density scenarios to validate the system's behavior.
+

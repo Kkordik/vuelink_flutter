@@ -1,0 +1,651 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Implement BLE Advertisement Transmission for Android",
+      "description": "Create the core functionality for Android devices to act as BLE Peripherals and GATT Servers, capable of broadcasting advertisement packets with message identifiers.",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Implement using Flutter with BLE libraries like flutter_blue_plus or flutter_reactive_ble to minimize native code. Create a service that constructs BLE advertisement packets (≤31 bytes) containing the Vuelink service UUID, message_id (truncated UUID/hash, 8 bytes), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Configure periodic broadcasting at 500ms-1s intervals. Implement GATT Server functionality to host the full message payload as a characteristic that can be read by clients. Ensure the implementation follows the platform-specific role where only Android devices can act as Peripherals/GATT Servers.",
+      "testStrategy": "Test advertisement packet construction with correct byte structure. Verify advertisement transmission using a secondary device to scan and detect packets. Validate GATT Server setup with characteristic UUID accessibility. Measure broadcast intervals for accuracy and power consumption.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up Flutter BLE peripheral library integration",
+          "description": "Research, select, and integrate the appropriate Flutter BLE library that supports peripheral mode on Android. Configure project dependencies and permissions.",
+          "status": "in-progress",
+          "dependencies": [],
+          "details": "Evaluate flutter_blue_plus, flutter_reactive_ble, and other options to determine which best supports Android peripheral mode. Add the chosen library to pubspec.yaml. Configure AndroidManifest.xml with required BLE permissions (BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, etc.). Create a BleService class that will serve as the interface for all BLE functionality. Test basic BLE availability detection on Android devices."
+        },
+        {
+          "id": 2,
+          "title": "Design and implement BLE advertisement packet structure",
+          "description": "Create the data structure for BLE advertisement packets within the 31-byte limit, including service UUID, message ID, sender ID, message type, and priority.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement a PacketBuilder class that constructs advertisement data with: Vuelink service UUID (16 bytes), message_id (8 bytes, truncated UUID/hash), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Create utility methods to pack these fields efficiently into the 31-byte limit. Implement validation to ensure packet size constraints are met. Add unit tests to verify correct packet construction and byte allocation."
+        },
+        {
+          "id": 3,
+          "title": "Implement BLE advertisement broadcasting functionality",
+          "description": "Create the core functionality to start and stop broadcasting BLE advertisements at configurable intervals.",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "Extend the BleService to include startAdvertising() and stopAdvertising() methods. Implement periodic broadcasting with configurable intervals (default 500ms-1s). Add battery-aware throttling to reduce frequency when battery is low. Create a background service mechanism to maintain advertisements when app is in background (if supported by the chosen library). Implement error handling for devices that don't support peripheral mode. Add logging for debugging advertisement states."
+        },
+        {
+          "id": 4,
+          "title": "Implement GATT Server service and characteristic definition",
+          "description": "Define the GATT service structure with characteristics to store the full message payload that can be read by clients.",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
+          "details": "Create a GattServerManager class to handle GATT server operations. Define the Vuelink service UUID and characteristic UUIDs for message payload. Implement methods to create and configure the GATT service with appropriate properties (read, notify). Create data structures to store the full message payload that exceeds advertisement size limits. Implement permission handling for characteristic access. Add unit tests to verify service and characteristic creation."
+        },
+        {
+          "id": 5,
+          "title": "Implement GATT Server connection and read request handling",
+          "description": "Add functionality to accept connections from clients and handle read requests for the message payload characteristic.",
+          "status": "pending",
+          "dependencies": [
+            4
+          ],
+          "details": "Extend GattServerManager to handle client connection events. Implement callbacks for characteristic read requests. Create a secure mechanism to serve the full message payload when requested. Add connection management to handle multiple simultaneous client connections. Implement timeout handling for incomplete connections. Add event listeners for connection state changes. Create a message cache to efficiently serve repeated requests for the same data."
+        },
+        {
+          "id": 6,
+          "title": "Create high-level API and platform-specific detection",
+          "description": "Develop a simple API for application code to use the BLE advertisement functionality and implement platform detection to ensure the feature is only available on Android.",
+          "status": "pending",
+          "dependencies": [
+            3,
+            5
+          ],
+          "details": "Create a VuelinkBleManager class with a clean API for application code. Implement methods like broadcastMessage(messageId, priority, payload) that handle all the low-level details. Add platform detection to disable peripheral functionality on iOS. Create a capability detection system to handle different Android versions and hardware capabilities. Implement graceful degradation for unsupported devices. Add comprehensive documentation and usage examples. Create integration tests that verify the entire flow from message creation to advertisement to GATT server read."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Implement BLE Scanning for Android and iOS",
+      "description": "Develop the BLE scanning functionality for both Android and iOS devices to detect Vuelink advertisement packets in foreground mode.",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create a cross-platform scanning implementation using Flutter with BLE libraries like flutter_blue_plus or flutter_reactive_ble to minimize native code. Configure devices to operate in BLE Central mode to scan for advertisements matching the Vuelink service UUID. Extract message_id and sender identifier from detected packets. Implement configurable scan window/interval settings (e.g., scan 300ms every 1000ms) with power optimization controls. Create a scanning state machine to handle start/stop/pause operations based on app lifecycle. Ensure proper handling of platform-specific scanning behaviors and limitations.",
+      "testStrategy": "Test scanning functionality on both Android and iOS devices. Verify correct detection of Vuelink advertisement packets. Measure scan power consumption under different duty cycles. Validate extraction of message_id and sender identifier from packets. Test scanning behavior during app state transitions (foreground/background).",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up cross-platform BLE library integration",
+          "description": "Integrate and configure a cross-platform BLE library (flutter_blue_plus or flutter_reactive_ble) into the Flutter project for both Android and iOS platforms.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Research and select the most appropriate BLE library based on current platform support and feature set. Add the library to pubspec.yaml and configure platform-specific permissions in AndroidManifest.xml (BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION) and Info.plist (NSBluetoothAlwaysUsageDescription). Create a BleManager class that will serve as a wrapper around the chosen library to abstract platform differences. Implement basic initialization and availability checking methods."
+        },
+        {
+          "id": 2,
+          "title": "Implement BLE scanning core functionality",
+          "description": "Create the core scanning functionality to detect BLE devices and filter for Vuelink service UUID.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Extend the BleManager class to implement scan start/stop methods. Configure devices to operate in BLE Central mode. Implement service UUID filtering to only detect Vuelink advertisement packets. Create data models for scan results that include device identifiers, RSSI values, and advertisement data. Implement proper error handling for scan failures. Test basic scanning functionality on both platforms to ensure devices are being detected correctly."
+        },
+        {
+          "id": 3,
+          "title": "Implement advertisement data parsing",
+          "description": "Develop functionality to extract and parse message_id and sender identifier from detected Vuelink advertisement packets.",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "Create a VuelinkPacketParser class to handle the extraction of data from raw advertisement packets. Implement methods to parse and validate the message_id and sender identifier from the manufacturer-specific data or service data sections of the advertisement. Add unit tests for the parser to verify correct extraction of data from sample packets. Integrate the parser with the BleManager to automatically process incoming advertisements. Implement a callback system to notify listeners when valid Vuelink packets are detected."
+        },
+        {
+          "id": 4,
+          "title": "Implement configurable scan settings and power optimization",
+          "description": "Add support for configurable scan window/interval settings with power optimization controls.",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "Extend the BleManager to accept scan configuration parameters including scan window (e.g., 300ms) and scan interval (e.g., 1000ms). Implement platform-specific code to apply these settings on Android and iOS. Create a PowerOptimizationLevel enum (HIGH, BALANCED, LOW) to allow easy configuration of scanning behavior based on power requirements. Implement adaptive scanning that adjusts parameters based on app state (foreground/background) and battery level. Add methods to dynamically update scan settings while a scan is in progress. Test power consumption in different modes to validate optimization effectiveness."
+        },
+        {
+          "id": 5,
+          "title": "Implement scanning state machine with lifecycle management",
+          "description": "Create a state machine to manage scanning operations based on app lifecycle events.",
+          "status": "pending",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Design and implement a ScanStateMachine class with states like IDLE, SCANNING, PAUSED, and ERROR. Integrate with Flutter's AppLifecycleState to automatically manage scanning based on app state (resume scanning when app is in foreground, pause when in background). Implement graceful handling of Bluetooth state changes (turned on/off). Add debouncing logic to prevent rapid start/stop cycles. Create a comprehensive logging system to track state transitions for debugging. Implement retry mechanisms for scan failures with exponential backoff. Test the state machine with various lifecycle scenarios to ensure robust operation across both platforms."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Implement GATT Client and Message Fetching",
+      "description": "Develop the GATT Client functionality for both Android and iOS to connect to advertising Android devices and retrieve full message payloads.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2
+      ],
+      "priority": "high",
+      "details": "Implement GATT Client functionality using BLE libraries like flutter_blue_plus or flutter_reactive_ble to connect to advertising Android devices upon detecting a new message_id. Create connection management logic with timeout handling (5-10 seconds) and retry mechanisms. Develop the protocol for requesting and downloading the full message payload from the GATT Server's characteristic. Implement proper connection lifecycle management including connection establishment, data transfer, and disconnection. Handle platform-specific connection behaviors and ensure iOS devices can properly connect to Android GATT Servers.",
+      "testStrategy": "Test GATT connection establishment between different device combinations (Android-to-Android and iOS-to-Android). Verify successful payload retrieval with various payload sizes. Validate connection timeout and retry mechanisms. Measure connection success rates in different environmental conditions. Test error handling during connection failures.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up BLE client infrastructure",
+          "description": "Create the foundation classes and interfaces for the BLE client functionality that will be used across both platforms",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Implement a BleClient class with platform-agnostic interfaces for device scanning, connection management, and data transfer. Define the message protocol structure for requesting and receiving message payloads. Create interfaces for connection callbacks, timeout handling, and error management. Select and integrate the appropriate BLE library (flutter_blue_plus or flutter_reactive_ble) and set up the necessary permissions in both Android and iOS configurations."
+        },
+        {
+          "id": 2,
+          "title": "Implement device scanning and discovery",
+          "description": "Create functionality to scan for and discover advertising Android devices with message_id",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Implement BLE scanning functionality to detect advertising Android devices. Create filters to identify devices broadcasting the application's specific service UUID. Parse advertisement data to extract message_id from the manufacturer data or service data. Implement scan result handling to trigger connection attempts when new message_ids are discovered. Add power-efficient scanning strategies with appropriate scan intervals and windows. Include platform-specific scanning optimizations for Android and iOS."
+        },
+        {
+          "id": 3,
+          "title": "Develop connection management with timeout and retry",
+          "description": "Create robust connection handling with timeout detection and retry mechanisms",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement connection establishment to discovered devices with proper error handling. Create a timeout system that cancels connection attempts after 5-10 seconds. Develop a retry mechanism that attempts reconnection with exponential backoff (e.g., 1s, 2s, 4s delays between attempts). Implement connection state monitoring to detect disconnections. Create a connection queue to manage multiple pending connections. Handle platform-specific connection behaviors, particularly addressing iOS background connection limitations."
+        },
+        {
+          "id": 4,
+          "title": "Implement GATT service and characteristic discovery",
+          "description": "Create functionality to discover the required GATT services and characteristics on connected devices",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
+          "details": "Implement service discovery on successfully connected devices. Create characteristic discovery within the application's specific service. Implement caching of service and characteristic UUIDs to optimize reconnections. Add validation to ensure the required characteristics for message transfer are available. Handle discovery failures with appropriate error reporting. Implement platform-specific discovery behaviors, particularly addressing iOS discovery limitations."
+        },
+        {
+          "id": 5,
+          "title": "Develop message payload transfer protocol",
+          "description": "Implement the protocol for requesting and receiving full message payloads from the GATT server",
+          "status": "pending",
+          "dependencies": [
+            4
+          ],
+          "details": "Implement characteristic read/write operations to request message data using the discovered message_id. Create a chunking mechanism to handle messages larger than the MTU size (typically 20-23 bytes). Implement reassembly of chunked messages into complete payloads. Add data validation with checksums or other integrity verification. Create progress tracking for multi-chunk transfers. Implement error handling for failed or incomplete transfers. Optimize transfer speeds while maintaining reliability."
+        },
+        {
+          "id": 6,
+          "title": "Implement connection lifecycle management",
+          "description": "Create proper connection lifecycle handling including disconnection and resource cleanup",
+          "status": "pending",
+          "dependencies": [
+            3,
+            5
+          ],
+          "details": "Implement proper disconnection after successful message transfer. Create resource cleanup to prevent memory leaks and excessive battery usage. Implement connection state persistence to handle app backgrounding or process death. Add graceful handling of unexpected disconnections. Create a connection priority management system to optimize for either speed or battery efficiency. Implement platform-specific disconnection behaviors, particularly addressing iOS background disconnection handling. Add comprehensive logging for debugging connection issues."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Implement Message Persistence Layer",
+      "description": "Create a local data persistence mechanism to store and manage received message payloads across the application.",
+      "status": "pending",
+      "dependencies": [
+        3
+      ],
+      "priority": "high",
+      "details": "Implement a key-value database (SQLite or Hive) to store messages indexed by UUID/hash. Create the Message Entity data model with fields for message_id, creation timestamp, expiration timestamp, message classification, flight entity reference, payload content, metadata, and originator identifier. Implement collision detection to handle potential UUID/hash conflicts. Develop TTL (time-to-live) management and message expiration handling. Create a caching system to prevent redundant data transfers by checking if a message_id already exists locally before attempting to fetch it.",
+      "testStrategy": "Test database CRUD operations for message storage and retrieval. Verify collision detection with deliberately conflicting UUIDs. Test TTL expiration and automatic cleanup of expired messages. Measure storage efficiency and query performance. Validate cache hit/miss behavior when scanning for already-received messages.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Message Entity Data Model",
+          "description": "Define the core Message Entity class with all required fields for storing message data",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Implement a Message class with the following fields: message_id (UUID/hash), creation_timestamp (DateTime), expiration_timestamp (DateTime), message_classification (enum), flight_entity_reference (foreign key/reference), payload_content (JSON/Map), metadata (JSON/Map), and originator_identifier (String). Include appropriate getters/setters, serialization methods for database storage, and validation logic for required fields. This model will serve as the foundation for all message persistence operations."
+        },
+        {
+          "id": 2,
+          "title": "Set Up Local Database Infrastructure",
+          "description": "Implement the database connection and schema for message storage",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Choose and configure either SQLite or Hive as the key-value database. Create the database schema with appropriate tables/collections for storing Message entities. Implement database connection management (initialization, opening, closing). Define database version management and migration strategies for future updates. Create database helper methods for basic CRUD operations on Message entities. Ensure proper error handling for database operations."
+        },
+        {
+          "id": 3,
+          "title": "Implement Message Repository Layer",
+          "description": "Create a repository class to handle all message persistence operations",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Develop a MessageRepository class that serves as the interface between the application and the database. Implement methods for saveMessage(), getMessage(id), getAllMessages(), updateMessage(), and deleteMessage(). Add specialized query methods like getMessagesByClassification() and getMessagesByFlightReference(). Implement transaction support for operations that require multiple database changes. Include proper error handling and logging for all repository operations."
+        },
+        {
+          "id": 4,
+          "title": "Implement Message Collision Detection and TTL Management",
+          "description": "Add logic to handle message ID conflicts and message expiration",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
+          "details": "Enhance the MessageRepository to detect and handle potential UUID/hash collisions when saving messages. Implement strategies for conflict resolution (e.g., version numbers, timestamp comparison, or payload comparison). Create a TTL management system that tracks message expiration timestamps. Implement a background process or scheduled task to periodically clean up expired messages. Add methods to manually expire messages or extend their TTL. Include logging for collision detection and expiration events."
+        },
+        {
+          "id": 5,
+          "title": "Develop Message Caching System",
+          "description": "Create a caching layer to prevent redundant network requests for existing messages",
+          "status": "pending",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implement a MessageCache class that maintains an in-memory cache of recently accessed message IDs. Create methods to check if a message exists locally before attempting network requests (checkMessageExists(id)). Implement cache invalidation strategies for when messages are updated or deleted. Add cache size management to prevent excessive memory usage. Integrate the caching system with the repository layer to provide a unified interface for message access. Include performance metrics to measure cache hit/miss rates."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Implement Minimal Data Minimization Framework",
+      "description": "Develop a simple, minimal data minimization system to optimize message payloads for efficient BLE transmission.",
+      "status": "pending",
+      "dependencies": [
+        4
+      ],
+      "priority": "medium",
+      "details": "Implement basic binary encoding for essential message fields only. Create simple lookup tables for the most common values (airline codes, airport codes). Use straightforward timestamp encoding with minimal bytes. Focus on the most critical fields for each message type, omitting non-essential data. Keep the implementation simple and maintainable rather than pursuing maximum compression. Ensure all advertisement packets remain under 31 bytes by limiting included fields rather than using complex compression.",
+      "testStrategy": "Test basic encoding/decoding of essential message fields. Verify data integrity is maintained with the simplified approach. Confirm lookup tables work for common values. Validate that all packets meet size constraints with the minimal encoding approach.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Define Essential Message Fields and Create Field Encoding Scheme",
+          "description": "Analyze message types and identify only the essential fields needed for each type. Create a binary encoding scheme for these fields.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Review all message types (flight status, gate info, etc.) and determine the minimum required fields for each. Create a mapping document that defines which fields are essential vs. optional. Design a binary encoding scheme that assigns bit positions or byte positions to each field type. Define how each data type will be encoded (integers, strings, enums, etc.) with minimal bytes. Document the encoding scheme with examples for each message type."
+        },
+        {
+          "id": 2,
+          "title": "Implement Lookup Tables for Common Values",
+          "description": "Create and implement lookup tables for frequently used values like airline codes and airport codes to reduce payload size.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Compile lists of common airline codes (e.g., AA, UA, DL) and airport codes (e.g., LAX, JFK, ORD). Assign short numeric IDs (1-byte where possible) to each common value. Create bidirectional lookup tables for encoding and decoding. Implement functions to convert between the full codes and their compressed representations. Include a fallback mechanism for uncommon codes that aren't in the lookup tables. Test the lookup system with various inputs to verify correctness."
+        },
+        {
+          "id": 3,
+          "title": "Develop Timestamp Encoding System",
+          "description": "Create an efficient timestamp encoding system that uses minimal bytes while maintaining necessary precision.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Analyze timestamp requirements across message types. Design a compact timestamp format that uses relative time where possible (e.g., minutes since midnight or offset from a base time). Implement encoding that uses 2-4 bytes instead of standard 8-byte timestamps. Create functions to convert between standard timestamps and the compact format. Consider different precision needs for different message types (some may need seconds, others only minutes). Test the timestamp encoding with various time values to ensure accuracy and proper handling of edge cases."
+        },
+        {
+          "id": 4,
+          "title": "Build Message Encoder/Decoder with Size Validation",
+          "description": "Implement the complete encoding and decoding system that combines all components and ensures packets stay under 31 bytes.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Create encoder functions that convert full message objects to binary-encoded payloads using the field definitions, lookup tables, and timestamp encoding. Implement decoder functions that reverse the process. Add size validation to ensure all encoded messages remain under 31 bytes. Implement a fallback mechanism that further reduces included fields if a message exceeds the size limit. Create a priority system for fields so less important ones are dropped first. Add logging to track encoding efficiency. Create comprehensive tests for the entire system with various message types and edge cases. Document the encoding/decoding API for other developers."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Implement Limited Echo Rebroadcasting",
+      "description": "Develop the optional, time-limited rebroadcasting functionality to help propagate messages through the mesh network.",
+      "status": "pending",
+      "dependencies": [
+        3,
+        4
+      ],
+      "priority": "medium",
+      "details": "Implement logic for devices to perform brief, time-limited rebroadcasts of received message advertisement packets using BLE libraries like flutter_blue_plus or flutter_reactive_ble. Configure rebroadcast to occur only after successfully fetching and caching a message. Limit rebroadcasts to 1-3 times over a few seconds to prevent network congestion. Create platform-specific implementations recognizing that iOS devices can only perform limited echo rebroadcasting while Android devices can act as full hosts. Implement controls to prevent continuous advertising except for origin Android devices or designated Android hosts. Add configuration options to enable/disable echo functionality based on network density and power considerations.",
+      "testStrategy": "Test rebroadcast behavior after message reception on both Android and iOS. Verify rebroadcast limits are enforced (1-3 times only). Measure power impact of rebroadcasting. Test propagation improvements in controlled multi-device environments. Validate that continuous advertising is properly restricted to origin/host Android devices only.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design rebroadcast configuration system",
+          "description": "Create a configuration system that allows enabling/disabling echo rebroadcasting functionality with appropriate default settings based on platform and network conditions.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Implement a RebroadcastConfig class with properties for: enabled/disabled state, maximum rebroadcast count (1-3), rebroadcast duration (in seconds), cooldown period between rebroadcasts, and device role (origin, echo, or host). Create platform-specific default configurations recognizing iOS limitations versus Android capabilities. Add this to the app's settings interface with appropriate toggles and explanations of power/network impact. Include detection logic for network density to provide recommendations on optimal settings."
+        },
+        {
+          "id": 2,
+          "title": "Implement platform detection and capability management",
+          "description": "Create a system to detect device platform and set appropriate rebroadcasting capabilities based on iOS and Android differences.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop a PlatformCapabilityManager class that detects whether the device is running iOS or Android. For iOS devices, limit functionality to echo rebroadcasting only (no continuous advertising). For Android devices, enable full host capabilities including continuous advertising if configured. Implement methods to query device capabilities (canRebroadcast, canHostContinuously, etc.) that other components can use to make runtime decisions. Test thoroughly on both platforms to ensure correct capability detection."
+        },
+        {
+          "id": 3,
+          "title": "Develop message rebroadcast timing controller",
+          "description": "Create a controller to manage the timing aspects of message rebroadcasting to prevent network congestion.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement a RebroadcastTimingController that handles scheduling of rebroadcasts with appropriate delays. Create logic to limit rebroadcasts to the configured maximum (1-3 times) with randomized short delays (0.5-2 seconds) between rebroadcasts to reduce collision probability. Implement a tracking system to record which messages have been rebroadcast and how many times. Add automatic termination of rebroadcasting after the configured time limit expires. Include safeguards to prevent rebroadcasting loops by checking message origin and hop count."
+        },
+        {
+          "id": 4,
+          "title": "Implement rebroadcast packet handling logic",
+          "description": "Develop the core logic for processing received messages and determining whether they should be rebroadcast based on configuration and platform capabilities.",
+          "status": "pending",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Create a RebroadcastManager class that integrates with the existing message reception pipeline. Implement logic to trigger rebroadcasting only after successfully fetching and caching a complete message. Add message deduplication to prevent rebroadcasting messages already seen. Implement platform-specific advertising packet creation using flutter_blue_plus (for Android) and flutter_reactive_ble (for cross-platform support). Create a message queue system to handle multiple pending rebroadcasts efficiently. Include logging of rebroadcast activities for debugging and optimization."
+        },
+        {
+          "id": 5,
+          "title": "Integrate rebroadcasting with network monitoring and optimization",
+          "description": "Connect the rebroadcasting system with network monitoring to dynamically adjust behavior based on observed network conditions.",
+          "status": "pending",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implement a NetworkDensityMonitor that tracks the frequency and volume of received messages to estimate network density. Create adaptive logic that can automatically adjust rebroadcast parameters (frequency, count) based on observed network conditions. Add battery-aware functionality that reduces rebroadcasting when device battery is low. Implement analytics to track rebroadcast effectiveness (how many unique devices received messages through rebroadcasts). Create a dashboard in the developer settings to visualize rebroadcast activity and network conditions. Finally, perform comprehensive testing in various network density scenarios to validate the system's behavior."
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Implement Flight Information Data Model",
+      "description": "Develop the aviation-specific data models and encoding/decoding systems for flight information.",
+      "status": "pending",
+      "dependencies": [
+        5
+      ],
+      "priority": "medium",
+      "details": "Create the Flight Entity data model with compressed formats for IATA/ICAO flight designators, carrier codes, departure times, status enumerations, and gate information. Implement the Message Priority Classification system with 5 levels (Emergency, Critical, Important, Informational, Low). Develop message type-specific field prioritization for different scenarios (gate changes, boarding, delays, cancellations, emergencies). Implement binary encoding/decoding for all flight-specific fields. Create the lookup table system for airline codes, airport codes, and status codes to minimize payload size.",
+      "testStrategy": "Test encoding/decoding of flight information with various real-world examples. Verify correct prioritization of fields based on message type. Test lookup table functionality with comprehensive airline and airport code sets. Validate binary encoding size efficiency for flight data. Test round-trip serialization/deserialization to ensure data integrity.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Define Flight Entity Core Data Model",
+          "description": "Create the foundational Flight Entity data model with all required fields and appropriate data types",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Implement a Flight class/struct with properties for: flight designators (IATA/ICAO), carrier codes, flight numbers, origin/destination airports, scheduled/actual departure and arrival times, flight status, gate information, and aircraft type. Use appropriate data types that balance memory efficiency with usability. Document each field with comments explaining aviation-specific details. Include validation logic for each field to ensure data integrity."
+        },
+        {
+          "id": 2,
+          "title": "Implement Message Priority Classification System",
+          "description": "Create an enumeration and supporting logic for the 5-level message priority system",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Define an enumeration with 5 priority levels: Emergency (level 1), Critical (level 2), Important (level 3), Informational (level 4), and Low (level 5). Implement helper methods to determine message priority based on content type. Create a PriorityManager class that handles priority-based message queuing, with configurable thresholds for each level. Include documentation on when each priority level should be used, with specific aviation examples (e.g., gate changes are Important, system status updates are Informational)."
+        },
+        {
+          "id": 3,
+          "title": "Develop Field Prioritization for Message Types",
+          "description": "Create scenario-specific field prioritization logic for different flight information events",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement a MessageTypeFieldPrioritizer that defines which Flight Entity fields are essential for different message scenarios. Create separate prioritization profiles for: gate changes, boarding notifications, delays, cancellations, and emergencies. Each profile should specify mandatory fields, optional fields, and field ordering. Implement a mechanism to dynamically generate message templates based on the scenario type and priority level. Test with realistic aviation scenarios to ensure all critical information is included."
+        },
+        {
+          "id": 4,
+          "title": "Create Lookup Table System for Aviation Codes",
+          "description": "Implement efficient lookup tables for airline codes, airport codes, and status codes",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop a LookupTableManager class that loads and caches standard aviation code tables: IATA/ICAO airline codes, airport codes, country codes, aircraft types, and status codes. Implement methods to convert between codes and full names/descriptions. Create a compressed storage format that minimizes memory usage while maintaining fast lookup performance. Include functionality to update lookup tables from standard industry sources. Add methods to serialize/deserialize the lookup tables for efficient storage and transmission."
+        },
+        {
+          "id": 5,
+          "title": "Implement Binary Encoding/Decoding System",
+          "description": "Create efficient binary serialization for flight information fields",
+          "status": "pending",
+          "dependencies": [
+            1,
+            3,
+            4
+          ],
+          "details": "Develop a FlightDataEncoder class that efficiently encodes Flight Entity objects into binary format. Implement field-specific compression techniques: bit-packing for enumerations, delta encoding for timestamps, dictionary encoding for text fields using the lookup tables. Create a matching FlightDataDecoder class with robust error handling. Implement versioning in the binary format to support future schema changes. Measure and optimize encoding/decoding performance and resulting payload sizes. Create comprehensive unit tests with various flight scenarios to verify correctness of the encoding/decoding process."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Implement Flight Information Rendering System",
+      "description": "Develop the UI components to display flight-specific data received through the mesh network.",
+      "status": "pending",
+      "dependencies": [
+        4,
+        7
+      ],
+      "priority": "medium",
+      "details": "Create a rendering pipeline to process and display flight information with appropriate visual hierarchy. Implement high-contrast UI components optimized for variable ambient lighting conditions. Develop chronological indicators for message age and freshness. Create visual indicators for active scanning state, connection attempts, and successful fetches. Implement multi-modal alerts using audio and haptic feedback for priority messages. Design the message list visualization with sorting and filtering capabilities. Create specialized display components for different message types (gate changes, boarding announcements, delays, etc.).",
+      "testStrategy": "Test UI rendering with various message types and priorities. Verify visual hierarchy correctly emphasizes critical information. Test accessibility features and contrast ratios. Validate chronological indicators for accuracy. Test multi-modal alerts on different device types. Perform usability testing with simulated airport scenarios.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Core Rendering Pipeline and Data Models",
+          "description": "Develop the foundational rendering pipeline that processes flight data from the mesh network and prepares it for display",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Implement a data processing layer that handles incoming flight information, normalizes it, and prepares it for rendering. Create data models for different message types (gate changes, boarding, delays, etc.). Design the pipeline to handle message prioritization based on urgency and relevance. Include timestamp processing for chronological tracking. This subtask focuses on the data processing backbone before any UI components are built."
+        },
+        {
+          "id": 2,
+          "title": "Implement Base UI Components with High-Contrast Design",
+          "description": "Develop the core UI components optimized for variable lighting conditions with appropriate visual hierarchy",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Create reusable UI components including message cards, status indicators, and information panels. Implement high-contrast design patterns with appropriate color schemes, typography, and spacing for readability in various lighting conditions. Design components to be responsive to different screen sizes and orientations. Include visual hierarchy indicators to distinguish between critical, important, and standard messages. Test components under different simulated lighting conditions."
+        },
+        {
+          "id": 3,
+          "title": "Develop Message List Visualization with Sorting and Filtering",
+          "description": "Create the main message list interface with chronological indicators and filtering capabilities",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement the primary message list view that displays processed flight information. Add chronological indicators showing message age and freshness. Create sorting options (by time, priority, flight, etc.) and filtering capabilities (by message type, status, etc.). Implement pagination or infinite scrolling for handling large message volumes. Include search functionality to quickly locate specific information. Design should follow the visual hierarchy established in subtask 2."
+        },
+        {
+          "id": 4,
+          "title": "Implement Network Status Indicators and Connection Feedback",
+          "description": "Create visual indicators for mesh network activity and connection states",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "Develop UI components that display the current state of the mesh network. Implement visual indicators for active scanning, connection attempts, and successful data fetches. Create animations or progress indicators that provide real-time feedback on network operations. Design error states and recovery indicators when network issues occur. Ensure these indicators are visible but non-intrusive to the main flight information display."
+        },
+        {
+          "id": 5,
+          "title": "Integrate Multi-Modal Alerts and Specialized Message Components",
+          "description": "Implement audio/haptic feedback system and specialized display components for different message types",
+          "status": "pending",
+          "dependencies": [
+            2,
+            3,
+            4
+          ],
+          "details": "Develop the multi-modal alert system that triggers audio and haptic feedback for priority messages. Create specialized display components for different message types (gate changes, boarding announcements, delays, etc.) with appropriate visual treatments. Implement the alert priority system that determines when to trigger multi-modal feedback. Design the alert dismissal and acknowledgment flow. Ensure all components integrate seamlessly with the main message list and network status indicators developed in previous subtasks."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Implement Message Composition Interface (Android)",
+      "description": "Develop the interface for airline personnel to create and originate messages on Android devices.",
+      "status": "pending",
+      "dependencies": [
+        1,
+        7
+      ],
+      "priority": "low",
+      "details": "Create an authenticated interface for airline personnel to compose and transmit messages. Implement flight identifier selection with search/filtering. Develop message classification selection UI. Create input forms for minimal payload content with character count limitations. Implement confirmation flow and transmission initiation. Develop templated message composition system for common scenarios. Create preview functionality to show how the message will appear to recipients. Implement scheduled message transmission capability for future broadcasts.",
+      "testStrategy": "Test authentication flow for airline personnel. Verify flight identifier selection and filtering. Test message composition with various content lengths and types. Validate template system for common message scenarios. Test scheduled message functionality for accuracy. Perform usability testing with airline personnel to validate workflow efficiency.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Authentication and Basic Message Composition UI",
+          "description": "Implement the authenticated interface foundation and basic message composition screen for airline personnel",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Develop the login/authentication flow for airline personnel. Create the basic message composition screen with a clean, intuitive layout. Implement the flight identifier selection component with search and filtering capabilities. Add input validation to ensure only authorized personnel can access the composition interface. Use Material Design components for consistent Android UI. Structure the layout to accommodate all planned message composition elements that will be added in subsequent tasks."
+        },
+        {
+          "id": 2,
+          "title": "Implement Message Classification and Content Input",
+          "description": "Add message classification selection and content input forms with character limitations",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Create a dropdown or radio button UI for message classification selection (e.g., urgent, informational, safety). Implement input forms for message content with appropriate character count limitations and real-time validation. Add visual indicators for remaining character count. Ensure the UI adapts to different message types, showing only relevant fields based on classification. Implement input masking and validation for specialized fields. Create error states and helpful validation messages for user feedback."
+        },
+        {
+          "id": 3,
+          "title": "Develop Message Templates and Preview Functionality",
+          "description": "Create a templated message system and message preview capability",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "Implement a template selection system for common message scenarios (e.g., delays, gate changes, boarding). Create template management functionality to save, edit and delete templates. Develop a message preview component that accurately displays how the message will appear to recipients on their devices. Ensure the preview updates in real-time as the user edits the message. Add the ability to switch between different recipient device views in the preview. Implement a way to save draft messages for later completion."
+        },
+        {
+          "id": 4,
+          "title": "Implement Confirmation Flow and Scheduled Transmission",
+          "description": "Add message confirmation process and scheduled message capabilities",
+          "status": "pending",
+          "dependencies": [
+            3
+          ],
+          "details": "Create a confirmation dialog that summarizes the message details before transmission. Implement immediate transmission functionality with progress indication and success/failure states. Develop scheduled message transmission capability with date/time picker. Add a scheduled messages queue view to see pending transmissions. Implement the ability to edit or cancel scheduled messages. Create notification system for successful/failed transmissions. Add analytics tracking for message composition and transmission events."
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Implement Power Optimization and Configuration Interface",
+      "description": "Develop power management features and user configuration options to optimize battery usage.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        3,
+        6
+      ],
+      "priority": "low",
+      "details": "Implement power consumption monitoring for BLE operations using the chosen BLE libraries (flutter_blue_plus, flutter_reactive_ble, etc.). Create user configuration options for scan intensity (aggressive, balanced, power-saving). Develop adaptive duty cycles for scanning based on battery level and user settings. Implement background execution optimizations within platform limits. Create power usage analytics to show BLE operation impact. Develop intelligent scanning that adjusts based on environment (e.g., reducing scan frequency in low-density scenarios). Implement power-saving mode that activates automatically at low battery levels.",
+      "testStrategy": "Measure power consumption under different scan configurations. Test adaptive duty cycles with various battery levels. Verify background execution behavior on both platforms. Test power-saving mode activation and its impact on functionality. Validate that user configuration changes properly affect scanning behavior. Perform long-duration testing to measure battery impact over extended periods.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement BLE Power Consumption Monitoring",
+          "description": "Create a system to measure and track power consumption of BLE operations",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Develop a service that monitors power usage during BLE operations (scanning, connecting, data transfer). Implement hooks into the chosen BLE library (flutter_blue_plus or flutter_reactive_ble) to track operation duration and frequency. Create a data structure to store power consumption metrics with timestamps. Implement background monitoring that works within platform constraints. Test on multiple device types to establish baseline power consumption profiles."
+        },
+        {
+          "id": 2,
+          "title": "Develop User Configuration Interface for Power Settings",
+          "description": "Create UI components allowing users to configure power usage preferences",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Design and implement a settings screen with options for scan intensity (aggressive, balanced, power-saving). Add toggles for background scanning behavior. Create sliders or presets for scan frequency and duration. Implement persistence for user preferences using shared_preferences or similar. Add explanatory text for each option describing the power/performance tradeoffs. Include a reset to defaults option. Ensure settings are applied immediately when changed."
+        },
+        {
+          "id": 3,
+          "title": "Implement Adaptive Duty Cycles Based on Battery and Settings",
+          "description": "Create algorithms that adjust BLE scanning patterns based on battery level and user preferences",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implement battery level monitoring using platform-specific APIs. Create duty cycle profiles for different battery levels (e.g., 100-75%, 74-50%, 49-25%, <25%). Develop algorithms that adjust scan frequency, duration, and interval based on the selected user power profile and current battery level. Implement graceful degradation of scan intensity as battery depletes. Add event listeners to detect and respond to battery level changes in real-time. Test extensively to ensure proper balance between functionality and power saving."
+        },
+        {
+          "id": 4,
+          "title": "Develop Power Usage Analytics Dashboard",
+          "description": "Create visualizations showing BLE operation impact on battery consumption",
+          "status": "pending",
+          "dependencies": [
+            1,
+            3
+          ],
+          "details": "Design and implement a power analytics dashboard UI. Create charts showing BLE power consumption over time. Add metrics for scan frequency, duration, and power impact. Implement comparisons between different power profiles. Show estimated battery savings from current settings. Create historical views of power usage patterns. Add export functionality for power usage data. Ensure analytics are updated in real-time as BLE operations occur."
+        },
+        {
+          "id": 5,
+          "title": "Implement Intelligent Scanning and Automatic Power-Saving Mode",
+          "description": "Create advanced scanning algorithms that adapt to environment and implement automatic power-saving at low battery",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Develop logic to detect BLE device density in the environment. Implement algorithms that reduce scan frequency in low-density scenarios. Create an automatic power-saving mode that activates at configurable battery thresholds (default 20%). Implement override options for critical operations. Add user notifications when entering power-saving mode. Develop environment fingerprinting to remember optimal scan settings for frequently visited locations. Implement graceful recovery when battery is recharged. Test in various real-world environments to validate adaptive behavior."
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "projectName": "Vuelink Offline Communication App",
+    "totalTasks": 10,
+    "sourceFile": "scripts/prd.txt",
+    "generatedAt": "2023-11-10"
+  }
+}

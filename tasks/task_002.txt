@@ -1,0 +1,43 @@
+# Task ID: 2
+# Title: Implement BLE Scanning for Android and iOS
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Develop the BLE scanning functionality for both Android and iOS devices to detect Vuelink advertisement packets in foreground mode.
+# Details:
+Create a cross-platform scanning implementation using Flutter with BLE libraries like flutter_blue_plus or flutter_reactive_ble to minimize native code. Configure devices to operate in BLE Central mode to scan for advertisements matching the Vuelink service UUID. Extract message_id and sender identifier from detected packets. Implement configurable scan window/interval settings (e.g., scan 300ms every 1000ms) with power optimization controls. Create a scanning state machine to handle start/stop/pause operations based on app lifecycle. Ensure proper handling of platform-specific scanning behaviors and limitations.
+
+# Test Strategy:
+Test scanning functionality on both Android and iOS devices. Verify correct detection of Vuelink advertisement packets. Measure scan power consumption under different duty cycles. Validate extraction of message_id and sender identifier from packets. Test scanning behavior during app state transitions (foreground/background).
+
+# Subtasks:
+## 1. Set up cross-platform BLE library integration [pending]
+### Dependencies: None
+### Description: Integrate and configure a cross-platform BLE library (flutter_blue_plus or flutter_reactive_ble) into the Flutter project for both Android and iOS platforms.
+### Details:
+Research and select the most appropriate BLE library based on current platform support and feature set. Add the library to pubspec.yaml and configure platform-specific permissions in AndroidManifest.xml (BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION) and Info.plist (NSBluetoothAlwaysUsageDescription). Create a BleManager class that will serve as a wrapper around the chosen library to abstract platform differences. Implement basic initialization and availability checking methods.
+
+## 2. Implement BLE scanning core functionality [pending]
+### Dependencies: 2.1
+### Description: Create the core scanning functionality to detect BLE devices and filter for Vuelink service UUID.
+### Details:
+Extend the BleManager class to implement scan start/stop methods. Configure devices to operate in BLE Central mode. Implement service UUID filtering to only detect Vuelink advertisement packets. Create data models for scan results that include device identifiers, RSSI values, and advertisement data. Implement proper error handling for scan failures. Test basic scanning functionality on both platforms to ensure devices are being detected correctly.
+
+## 3. Implement advertisement data parsing [pending]
+### Dependencies: 2.2
+### Description: Develop functionality to extract and parse message_id and sender identifier from detected Vuelink advertisement packets.
+### Details:
+Create a VuelinkPacketParser class to handle the extraction of data from raw advertisement packets. Implement methods to parse and validate the message_id and sender identifier from the manufacturer-specific data or service data sections of the advertisement. Add unit tests for the parser to verify correct extraction of data from sample packets. Integrate the parser with the BleManager to automatically process incoming advertisements. Implement a callback system to notify listeners when valid Vuelink packets are detected.
+
+## 4. Implement configurable scan settings and power optimization [pending]
+### Dependencies: 2.2
+### Description: Add support for configurable scan window/interval settings with power optimization controls.
+### Details:
+Extend the BleManager to accept scan configuration parameters including scan window (e.g., 300ms) and scan interval (e.g., 1000ms). Implement platform-specific code to apply these settings on Android and iOS. Create a PowerOptimizationLevel enum (HIGH, BALANCED, LOW) to allow easy configuration of scanning behavior based on power requirements. Implement adaptive scanning that adjusts parameters based on app state (foreground/background) and battery level. Add methods to dynamically update scan settings while a scan is in progress. Test power consumption in different modes to validate optimization effectiveness.
+
+## 5. Implement scanning state machine with lifecycle management [pending]
+### Dependencies: 2.3, 2.4
+### Description: Create a state machine to manage scanning operations based on app lifecycle events.
+### Details:
+Design and implement a ScanStateMachine class with states like IDLE, SCANNING, PAUSED, and ERROR. Integrate with Flutter's AppLifecycleState to automatically manage scanning based on app state (resume scanning when app is in foreground, pause when in background). Implement graceful handling of Bluetooth state changes (turned on/off). Add debouncing logic to prevent rapid start/stop cycles. Create a comprehensive logging system to track state transitions for debugging. Implement retry mechanisms for scan failures with exponential backoff. Test the state machine with various lifecycle scenarios to ensure robust operation across both platforms.
+

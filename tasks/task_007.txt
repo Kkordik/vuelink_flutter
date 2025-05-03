@@ -1,0 +1,43 @@
+# Task ID: 7
+# Title: Implement Flight Information Data Model
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Develop the aviation-specific data models and encoding/decoding systems for flight information.
+# Details:
+Create the Flight Entity data model with compressed formats for IATA/ICAO flight designators, carrier codes, departure times, status enumerations, and gate information. Implement the Message Priority Classification system with 5 levels (Emergency, Critical, Important, Informational, Low). Develop message type-specific field prioritization for different scenarios (gate changes, boarding, delays, cancellations, emergencies). Implement binary encoding/decoding for all flight-specific fields. Create the lookup table system for airline codes, airport codes, and status codes to minimize payload size.
+
+# Test Strategy:
+Test encoding/decoding of flight information with various real-world examples. Verify correct prioritization of fields based on message type. Test lookup table functionality with comprehensive airline and airport code sets. Validate binary encoding size efficiency for flight data. Test round-trip serialization/deserialization to ensure data integrity.
+
+# Subtasks:
+## 1. Define Flight Entity Core Data Model [pending]
+### Dependencies: None
+### Description: Create the foundational Flight Entity data model with all required fields and appropriate data types
+### Details:
+Implement a Flight class/struct with properties for: flight designators (IATA/ICAO), carrier codes, flight numbers, origin/destination airports, scheduled/actual departure and arrival times, flight status, gate information, and aircraft type. Use appropriate data types that balance memory efficiency with usability. Document each field with comments explaining aviation-specific details. Include validation logic for each field to ensure data integrity.
+
+## 2. Implement Message Priority Classification System [pending]
+### Dependencies: None
+### Description: Create an enumeration and supporting logic for the 5-level message priority system
+### Details:
+Define an enumeration with 5 priority levels: Emergency (level 1), Critical (level 2), Important (level 3), Informational (level 4), and Low (level 5). Implement helper methods to determine message priority based on content type. Create a PriorityManager class that handles priority-based message queuing, with configurable thresholds for each level. Include documentation on when each priority level should be used, with specific aviation examples (e.g., gate changes are Important, system status updates are Informational).
+
+## 3. Develop Field Prioritization for Message Types [pending]
+### Dependencies: 7.1, 7.2
+### Description: Create scenario-specific field prioritization logic for different flight information events
+### Details:
+Implement a MessageTypeFieldPrioritizer that defines which Flight Entity fields are essential for different message scenarios. Create separate prioritization profiles for: gate changes, boarding notifications, delays, cancellations, and emergencies. Each profile should specify mandatory fields, optional fields, and field ordering. Implement a mechanism to dynamically generate message templates based on the scenario type and priority level. Test with realistic aviation scenarios to ensure all critical information is included.
+
+## 4. Create Lookup Table System for Aviation Codes [pending]
+### Dependencies: 7.1
+### Description: Implement efficient lookup tables for airline codes, airport codes, and status codes
+### Details:
+Develop a LookupTableManager class that loads and caches standard aviation code tables: IATA/ICAO airline codes, airport codes, country codes, aircraft types, and status codes. Implement methods to convert between codes and full names/descriptions. Create a compressed storage format that minimizes memory usage while maintaining fast lookup performance. Include functionality to update lookup tables from standard industry sources. Add methods to serialize/deserialize the lookup tables for efficient storage and transmission.
+
+## 5. Implement Binary Encoding/Decoding System [pending]
+### Dependencies: 7.1, 7.3, 7.4
+### Description: Create efficient binary serialization for flight information fields
+### Details:
+Develop a FlightDataEncoder class that efficiently encodes Flight Entity objects into binary format. Implement field-specific compression techniques: bit-packing for enumerations, delta encoding for timestamps, dictionary encoding for text fields using the lookup tables. Create a matching FlightDataDecoder class with robust error handling. Implement versioning in the binary format to support future schema changes. Measure and optimize encoding/decoding performance and resulting payload sizes. Create comprehensive unit tests with various flight scenarios to verify correctness of the encoding/decoding process.
+

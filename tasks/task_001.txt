@@ -1,0 +1,49 @@
+# Task ID: 1
+# Title: Implement BLE Advertisement Transmission for Android
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create the core functionality for Android devices to act as BLE Peripherals and GATT Servers, capable of broadcasting advertisement packets with message identifiers.
+# Details:
+Implement using Flutter with BLE libraries like flutter_blue_plus or flutter_reactive_ble to minimize native code. Create a service that constructs BLE advertisement packets (≤31 bytes) containing the Vuelink service UUID, message_id (truncated UUID/hash, 8 bytes), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Configure periodic broadcasting at 500ms-1s intervals. Implement GATT Server functionality to host the full message payload as a characteristic that can be read by clients. Ensure the implementation follows the platform-specific role where only Android devices can act as Peripherals/GATT Servers.
+
+# Test Strategy:
+Test advertisement packet construction with correct byte structure. Verify advertisement transmission using a secondary device to scan and detect packets. Validate GATT Server setup with characteristic UUID accessibility. Measure broadcast intervals for accuracy and power consumption.
+
+# Subtasks:
+## 1. Set up Flutter BLE peripheral library integration [in-progress]
+### Dependencies: None
+### Description: Research, select, and integrate the appropriate Flutter BLE library that supports peripheral mode on Android. Configure project dependencies and permissions.
+### Details:
+Evaluate flutter_blue_plus, flutter_reactive_ble, and other options to determine which best supports Android peripheral mode. Add the chosen library to pubspec.yaml. Configure AndroidManifest.xml with required BLE permissions (BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, etc.). Create a BleService class that will serve as the interface for all BLE functionality. Test basic BLE availability detection on Android devices.
+
+## 2. Design and implement BLE advertisement packet structure [pending]
+### Dependencies: 1.1
+### Description: Create the data structure for BLE advertisement packets within the 31-byte limit, including service UUID, message ID, sender ID, message type, and priority.
+### Details:
+Implement a PacketBuilder class that constructs advertisement data with: Vuelink service UUID (16 bytes), message_id (8 bytes, truncated UUID/hash), sender identifier (2 bytes), message type (3 bits), and priority indicator (3 bits). Create utility methods to pack these fields efficiently into the 31-byte limit. Implement validation to ensure packet size constraints are met. Add unit tests to verify correct packet construction and byte allocation.
+
+## 3. Implement BLE advertisement broadcasting functionality [pending]
+### Dependencies: 1.2
+### Description: Create the core functionality to start and stop broadcasting BLE advertisements at configurable intervals.
+### Details:
+Extend the BleService to include startAdvertising() and stopAdvertising() methods. Implement periodic broadcasting with configurable intervals (default 500ms-1s). Add battery-aware throttling to reduce frequency when battery is low. Create a background service mechanism to maintain advertisements when app is in background (if supported by the chosen library). Implement error handling for devices that don't support peripheral mode. Add logging for debugging advertisement states.
+
+## 4. Implement GATT Server service and characteristic definition [pending]
+### Dependencies: 1.3
+### Description: Define the GATT service structure with characteristics to store the full message payload that can be read by clients.
+### Details:
+Create a GattServerManager class to handle GATT server operations. Define the Vuelink service UUID and characteristic UUIDs for message payload. Implement methods to create and configure the GATT service with appropriate properties (read, notify). Create data structures to store the full message payload that exceeds advertisement size limits. Implement permission handling for characteristic access. Add unit tests to verify service and characteristic creation.
+
+## 5. Implement GATT Server connection and read request handling [pending]
+### Dependencies: 1.4
+### Description: Add functionality to accept connections from clients and handle read requests for the message payload characteristic.
+### Details:
+Extend GattServerManager to handle client connection events. Implement callbacks for characteristic read requests. Create a secure mechanism to serve the full message payload when requested. Add connection management to handle multiple simultaneous client connections. Implement timeout handling for incomplete connections. Add event listeners for connection state changes. Create a message cache to efficiently serve repeated requests for the same data.
+
+## 6. Create high-level API and platform-specific detection [pending]
+### Dependencies: 1.3, 1.5
+### Description: Develop a simple API for application code to use the BLE advertisement functionality and implement platform detection to ensure the feature is only available on Android.
+### Details:
+Create a VuelinkBleManager class with a clean API for application code. Implement methods like broadcastMessage(messageId, priority, payload) that handle all the low-level details. Add platform detection to disable peripheral functionality on iOS. Create a capability detection system to handle different Android versions and hardware capabilities. Implement graceful degradation for unsupported devices. Add comprehensive documentation and usage examples. Create integration tests that verify the entire flow from message creation to advertisement to GATT server read.
+

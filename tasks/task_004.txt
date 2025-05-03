@@ -1,0 +1,43 @@
+# Task ID: 4
+# Title: Implement Message Persistence Layer
+# Status: pending
+# Dependencies: 3
+# Priority: high
+# Description: Create a local data persistence mechanism to store and manage received message payloads across the application.
+# Details:
+Implement a key-value database (SQLite or Hive) to store messages indexed by UUID/hash. Create the Message Entity data model with fields for message_id, creation timestamp, expiration timestamp, message classification, flight entity reference, payload content, metadata, and originator identifier. Implement collision detection to handle potential UUID/hash conflicts. Develop TTL (time-to-live) management and message expiration handling. Create a caching system to prevent redundant data transfers by checking if a message_id already exists locally before attempting to fetch it.
+
+# Test Strategy:
+Test database CRUD operations for message storage and retrieval. Verify collision detection with deliberately conflicting UUIDs. Test TTL expiration and automatic cleanup of expired messages. Measure storage efficiency and query performance. Validate cache hit/miss behavior when scanning for already-received messages.
+
+# Subtasks:
+## 1. Create Message Entity Data Model [pending]
+### Dependencies: None
+### Description: Define the core Message Entity class with all required fields for storing message data
+### Details:
+Implement a Message class with the following fields: message_id (UUID/hash), creation_timestamp (DateTime), expiration_timestamp (DateTime), message_classification (enum), flight_entity_reference (foreign key/reference), payload_content (JSON/Map), metadata (JSON/Map), and originator_identifier (String). Include appropriate getters/setters, serialization methods for database storage, and validation logic for required fields. This model will serve as the foundation for all message persistence operations.
+
+## 2. Set Up Local Database Infrastructure [pending]
+### Dependencies: 4.1
+### Description: Implement the database connection and schema for message storage
+### Details:
+Choose and configure either SQLite or Hive as the key-value database. Create the database schema with appropriate tables/collections for storing Message entities. Implement database connection management (initialization, opening, closing). Define database version management and migration strategies for future updates. Create database helper methods for basic CRUD operations on Message entities. Ensure proper error handling for database operations.
+
+## 3. Implement Message Repository Layer [pending]
+### Dependencies: 4.1, 4.2
+### Description: Create a repository class to handle all message persistence operations
+### Details:
+Develop a MessageRepository class that serves as the interface between the application and the database. Implement methods for saveMessage(), getMessage(id), getAllMessages(), updateMessage(), and deleteMessage(). Add specialized query methods like getMessagesByClassification() and getMessagesByFlightReference(). Implement transaction support for operations that require multiple database changes. Include proper error handling and logging for all repository operations.
+
+## 4. Implement Message Collision Detection and TTL Management [pending]
+### Dependencies: 4.3
+### Description: Add logic to handle message ID conflicts and message expiration
+### Details:
+Enhance the MessageRepository to detect and handle potential UUID/hash collisions when saving messages. Implement strategies for conflict resolution (e.g., version numbers, timestamp comparison, or payload comparison). Create a TTL management system that tracks message expiration timestamps. Implement a background process or scheduled task to periodically clean up expired messages. Add methods to manually expire messages or extend their TTL. Include logging for collision detection and expiration events.
+
+## 5. Develop Message Caching System [pending]
+### Dependencies: 4.3, 4.4
+### Description: Create a caching layer to prevent redundant network requests for existing messages
+### Details:
+Implement a MessageCache class that maintains an in-memory cache of recently accessed message IDs. Create methods to check if a message exists locally before attempting network requests (checkMessageExists(id)). Implement cache invalidation strategies for when messages are updated or deleted. Add cache size management to prevent excessive memory usage. Integrate the caching system with the repository layer to provide a unified interface for message access. Include performance metrics to measure cache hit/miss rates.
+
