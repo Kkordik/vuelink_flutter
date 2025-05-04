@@ -1,10 +1,22 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 import 'screens/ble_test_screen.dart';
 import 'screens/ble_scanner_screen.dart';
+import 'services/vuelink_forwarding_service.dart'; // Import forwarding service
+import 'utils/deep_link_utils.dart'; // Import deep link utils
+import 'services/vuelink_scanner_service.dart'; // For VuelinkReceivedMessage
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
   runApp(const MainApp());
 }
+
+// Use a GlobalKey for navigation without BuildContext
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
@@ -13,17 +25,101 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'VueLink Flutter',
+      navigatorKey: navigatorKey, // Assign the key
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
       home: const HomeScreen(),
+      // Define routes if you want named navigation (optional but good practice)
+      routes: {
+        '/scanner': (context) => const BleScannerScreen(),
+        '/advertiser': (context) => const BleTestScreen(),
+        // Add other routes as needed
+      },
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+  final VuelinkForwardingService _forwardingService =
+      VuelinkForwardingService();
+
+  @override
+  void initState() {
+    super.initState();
+    _initAppLinks();
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initAppLinks() async {
+    _appLinks = AppLinks();
+
+    await _forwardingService.initialize();
+
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (Uri uri) {
+        developer.log('onAppLink: $uri');
+        _handleDeepLink(uri);
+      },
+      onError: (err) {
+        developer.log('Error listening to app link stream: $err');
+      },
+    );
+  }
+
+  void _handleDeepLink(Uri uri) {
+    developer.log('Handling deep link: $uri');
+
+    if (uri.scheme == 'vuelink' &&
+        uri.host == 'app' &&
+        uri.pathSegments.isNotEmpty) {
+      final String encodedData = uri.pathSegments.first;
+      developer.log('Extracted encoded data: $encodedData');
+
+      final List<VuelinkReceivedMessage>? decodedMessages =
+          decodeMessagesFromDeepLink(encodedData);
+
+      if (decodedMessages != null && decodedMessages.isNotEmpty) {
+        developer.log(
+          'Successfully decoded ${decodedMessages.length} messages.',
+        );
+
+        _forwardingService.addMessagesFromDeepLink(decodedMessages).then((
+          count,
+        ) {
+          developer.log(
+            'Finished adding $count new messages from deep link to storage.',
+          );
+          navigatorKey.currentState?.pushReplacementNamed('/scanner');
+        });
+      } else {
+        developer.log(
+          'Failed to decode messages or no messages found in link.',
+        );
+        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+          const SnackBar(content: Text('Error processing Vuelink data.')),
+        );
+        navigatorKey.currentState?.pushNamed('/scanner');
+      }
+    } else {
+      developer.log('Ignoring non-matching deep link format.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +143,7 @@ class HomeScreen extends StatelessWidget {
                 'BLE Advertiser',
                 'Create and broadcast BLE advertisements',
                 Icons.bluetooth_audio,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const BleTestScreen(),
-                  ),
-                ),
+                () => Navigator.pushNamed(context, '/advertiser'),
               ),
               const SizedBox(height: 16),
               _buildNavigationButton(
@@ -60,12 +151,7 @@ class HomeScreen extends StatelessWidget {
                 'BLE Scanner',
                 'Scan and receive BLE advertisements',
                 Icons.bluetooth_searching,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const BleScannerScreen(),
-                  ),
-                ),
+                () => Navigator.pushNamed(context, '/scanner'),
               ),
             ],
           ),

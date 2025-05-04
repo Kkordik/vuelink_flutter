@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // Re-add for debugPrint, listEquals
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/message_types.dart';
+import 'vuelink_scanner_service.dart'; // Import for VuelinkReceivedMessage
+// import 'package:flutter/foundation.dart' as foundation; // Remove prefixed import, use direct
 
 /// Service to handle message forwarding logic and history tracking
 class VuelinkForwardingService {
@@ -77,15 +79,24 @@ class VuelinkForwardingService {
     if (msg1['messageType'] != msg2['messageType']) return false;
 
     // Compare based on type
-    final type = msg1['messageType']; // Already know types are the same
+    final type = msg1['messageType'] as MessageType?;
     if (type == MessageType.generalText) {
       return msg1['textContent'] == msg2['textContent'];
     } else if (type == MessageType.generalBasic) {
-      // Compare base64 encoded content if available
-      return msg1['content_base64'] == msg2['content_base64'];
+      // Compare raw content bytes if available
+      final content1 = msg1['content'];
+      final content2 = msg2['content'];
+      if (content1 is Uint8List && content2 is Uint8List) {
+        // Use listEquals for byte comparison (now available directly)
+        return listEquals(content1, content2);
+      }
+      // Fallback or if content isn't bytes (e.g., string was stored)
+      return content1 == content2;
     } else if (type == MessageType.flightUpdate) {
-      return msg1['flightId'] == msg2['flightId'] &&
-          msg1['updateType'] == msg2['updateType'];
+      // Ensure enums are compared correctly (they should be after rehydration)
+      final updateType1 = msg1['updateType'] as FlightUpdateType?;
+      final updateType2 = msg2['updateType'] as FlightUpdateType?;
+      return msg1['flightId'] == msg2['flightId'] && updateType1 == updateType2;
     } else if (type == MessageType.flightUpdateGeneral) {
       return msg1['flightId'] == msg2['flightId'] &&
           msg1['textContent'] == msg2['textContent'];
@@ -117,12 +128,20 @@ class VuelinkForwardingService {
 
     for (int i = 0; i < checkLimit; i++) {
       try {
-        final savedMessageMap = jsonDecode(_savedMessagesJson[i]);
-        // Note: savedMessageMap already has enums as strings, base64 content etc.
-        // from when it was originally saved via _prepareForSerialization.
+        final savedMessageMapRaw = jsonDecode(_savedMessagesJson[i]);
+
+        // --- FIX: Rehydrate the saved map before comparison ---
+        final savedMessageMap = _rehydrateMapFromStorage(savedMessageMapRaw);
+        // -----------------------------------------------------
+
+        // Note: savedMessageMap now has enums as enums, content as Uint8List etc.
+        // comparableIncomingData also has enums as enums, content as Uint8List etc.
+        // because _prepareForSerialization handles the conversion for comparison needs implicitly.
+        // However, let's adjust _prepareForSerialization to NOT add timestamp for comparison.
 
         if (_areMessagesContentEquivalent(
-          comparableIncomingData,
+          // Pass the original incoming data, _areMessagesContentEquivalent will handle comparison
+          incomingMessageData, // Use original data before _prepare adds timestamp
           savedMessageMap,
         )) {
           isDuplicate = true;
@@ -162,8 +181,9 @@ class VuelinkForwardingService {
 
   /// Prepare message data for JSON serialization
   Map<String, dynamic> _prepareForSerialization(
-    Map<String, dynamic> messageData,
-  ) {
+    Map<String, dynamic> messageData, {
+    bool addTimestamp = true, // Add optional flag
+  }) {
     final serializableData = Map<String, dynamic>.from(messageData);
 
     // Convert non-serializable types to strings or lists
@@ -189,12 +209,55 @@ class VuelinkForwardingService {
       serializableData['updateType'] =
           (serializableData['updateType'] as Enum).name;
     }
-    // Add timestamp if not already present (useful for sorting/display)
-    if (!serializableData.containsKey('receivedTimestamp')) {
+    // Add timestamp only if requested (i.e., when actually saving, not just comparing)
+    if (addTimestamp && !serializableData.containsKey('receivedTimestamp')) {
       serializableData['receivedTimestamp'] = DateTime.now().toIso8601String();
     }
 
     return serializableData;
+  }
+
+  /// Convert a map loaded from storage back to a map with proper types (Enums, Uint8List)
+  Map<String, dynamic> _rehydrateMapFromStorage(
+    Map<String, dynamic> mapFromStorage,
+  ) {
+    final Map<String, dynamic> rehydratedMap = Map.from(mapFromStorage);
+    // Convert serialized fields back (similar logic to getSavedMessages)
+    if (rehydratedMap.containsKey('messageType') &&
+        rehydratedMap['messageType'] is String) {
+      rehydratedMap['messageType'] = MessageType.values.firstWhere(
+        (e) => e.name == rehydratedMap['messageType'],
+        orElse: () => MessageType.unknown,
+      );
+    }
+    if (rehydratedMap.containsKey('priority') &&
+        rehydratedMap['priority'] is String) {
+      rehydratedMap['priority'] = Priority.values.firstWhere(
+        (e) => e.name == rehydratedMap['priority'],
+        orElse: () => Priority.low,
+      );
+    }
+    if (rehydratedMap.containsKey('updateType') &&
+        rehydratedMap['updateType'] is String) {
+      rehydratedMap['updateType'] = FlightUpdateType.values.firstWhere(
+        (e) => e.name == rehydratedMap['updateType'],
+        orElse: () => FlightUpdateType.general,
+      );
+    }
+    if (rehydratedMap.containsKey('content_base64') &&
+        rehydratedMap['content_base64'] is String) {
+      try {
+        rehydratedMap['content'] = base64Decode(
+          rehydratedMap['content_base64'] as String,
+        );
+      } catch (e) {
+        debugPrint("Error decoding base64 content during rehydration: $e");
+        rehydratedMap['content'] = Uint8List(0); // Assign empty list on error
+      }
+      rehydratedMap.remove('content_base64');
+    }
+    // Keep other fields like repeatFlag, partNumber, totalParts, textContent, flightId as they are
+    return rehydratedMap;
   }
 
   /// Record a received message in history (SHOULD ONLY BE CALLED AFTER shouldProcessMessage returns true)
@@ -202,8 +265,11 @@ class VuelinkForwardingService {
   /// [messageData] - Parsed message data map
   Future<void> recordMessage(Map<String, dynamic> messageData) async {
     try {
-      // Prepare data for serialization (handles enums, Uint8List, adds timestamp)
-      final serializableData = _prepareForSerialization(messageData);
+      // Prepare data for serialization, ensuring timestamp is added
+      final serializableData = _prepareForSerialization(
+        messageData,
+        addTimestamp: true,
+      );
 
       // Convert the prepared map to a JSON string
       final messageJson = jsonEncode(serializableData);
@@ -275,6 +341,42 @@ class VuelinkForwardingService {
     }
     // Messages are already stored most recent first
     return messages;
+  }
+
+  /// Adds messages received from a deep link, checking for duplicates.
+  /// Returns the number of new messages added.
+  Future<int> addMessagesFromDeepLink(
+    List<VuelinkReceivedMessage> messages,
+  ) async {
+    int newMessagesAdded = 0;
+    if (_prefs == null) await initialize(); // Ensure initialized
+
+    // Process messages in reverse order so the oldest from the link get checked first
+    for (final message in messages.reversed) {
+      // Use the messageData map from the VuelinkReceivedMessage object
+      final messageData = message.messageData;
+
+      // Check if this message should be processed (using existing duplication logic)
+      if (shouldProcessMessage(messageData)) {
+        // Record the message using the existing method
+        // This will prepare it for serialization and save it
+        await recordMessage(messageData);
+        newMessagesAdded++;
+      } else {
+        debugPrint(
+          'Deep link message skipped due to duplication rules: ${messageData['messageType']}',
+        );
+      }
+    }
+
+    if (newMessagesAdded > 0) {
+      debugPrint('Added $newMessagesAdded new messages from deep link.');
+      // No need to explicitly call _saveMessages here as recordMessage already does.
+    } else {
+      debugPrint('No new messages added from deep link (all duplicates).');
+    }
+
+    return newMessagesAdded;
   }
 
   /// Clears all saved messages from memory and persistent storage

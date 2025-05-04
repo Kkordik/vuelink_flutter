@@ -58,7 +58,7 @@ class BleService {
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
       if (kDebugMode) {
-        print('${record.level.name}: ${record.time}: ${record.message}');
+        // print('${record.level.name}: ${record.time}: ${record.message}');
       }
     });
 

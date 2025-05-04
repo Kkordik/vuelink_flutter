@@ -107,6 +107,8 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
   int _messageCount = 0;
   BluetoothLowEnergyState _currentState = BluetoothLowEnergyState.unknown;
   bool _permissionsGranted = false;
+  final TextEditingController _filterController = TextEditingController();
+  String _flightIdFilter = '';
 
   // Subscriptions
   StreamSubscription? _stateSubscription;
@@ -116,6 +118,13 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
   void initState() {
     super.initState();
     _initializeScanner();
+    _filterController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _flightIdFilter = _filterController.text.toLowerCase();
+        });
+      }
+    });
   }
 
   Future<void> _initializeScanner() async {
@@ -208,21 +217,21 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
   }
 
   Future<bool> _requestBlePermissions() async {
-    print("Requesting appropriate BLE permissions for platform...");
+    // print("Requesting appropriate BLE permissions for platform...");
     bool permissionsGranted = false;
 
     if (Platform.isAndroid) {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
       final sdkInt = androidInfo.version.sdkInt;
-      print("Android SDK Version: $sdkInt");
+      // print("Android SDK Version: $sdkInt");
 
       List<Permission> permissionsToRequest = [];
       bool checkBluetoothStatusSeparately = false;
 
       if (sdkInt >= 31) {
         // Android 12+
-        print("Requesting Android 12+ BLE permissions...");
+        // print("Requesting Android 12+ BLE permissions...");
         permissionsToRequest.addAll([
           Permission.bluetoothScan,
           Permission.bluetoothAdvertise,
@@ -230,7 +239,7 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
         ]);
       } else {
         // Android 11 and below
-        print("Requesting Android <= 11 BLE permissions (Location)...");
+        // print("Requesting Android <= 11 BLE permissions (Location)...");
         permissionsToRequest.add(Permission.locationWhenInUse);
         // We also need to check the status of the basic Bluetooth permission implicitly
         checkBluetoothStatusSeparately = true;
@@ -239,9 +248,9 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
       PermissionStatus bluetoothStatus =
           PermissionStatus.denied; // Default status
       if (checkBluetoothStatusSeparately) {
-        print("Checking status of implicit Bluetooth permission...");
+        // print("Checking status of implicit Bluetooth permission...");
         bluetoothStatus = await Permission.bluetooth.status;
-        print("Implicit Bluetooth Permission Status: ${bluetoothStatus.name}");
+        // print("Implicit Bluetooth Permission Status: ${bluetoothStatus.name}");
       }
 
       if (permissionsToRequest.isNotEmpty) {
@@ -249,11 +258,11 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
             await permissionsToRequest.request();
 
         // Log statuses
-        print("--- Permission Request Results ---");
+        // print("--- Permission Request Results ---");
         statuses.forEach((permission, status) {
-          print("${permission.toString().split('.').last}: ${status.name}");
+          // print("${permission.toString().split('.').last}: ${status.name}");
         });
-        print("---------------------------------");
+        // print("---------------------------------");
 
         // Check statuses
         if (sdkInt >= 31) {
@@ -268,20 +277,16 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
           bool bluetoothAvailable =
               bluetoothStatus.isGranted ||
               bluetoothStatus.isLimited; // isLimited might indicate BT is on
-          print(
-            "Old Android Check: Location Granted = $locationGranted, Bluetooth Available = $bluetoothAvailable",
-          );
+          // print("Old Android Check: Location Granted = $locationGranted, Bluetooth Available = $bluetoothAvailable",);
           permissionsGranted = locationGranted && bluetoothAvailable;
         }
 
         if (!permissionsGranted &&
             statuses.values.any((status) => status.isPermanentlyDenied)) {
-          print(
-            "Some required permissions permanently denied. Opening settings...",
-          );
+          // print("Some required permissions permanently denied. Opening settings...");
           await openAppSettings();
         } else if (!permissionsGranted) {
-          print("Required permissions were not granted.");
+          // print("Required permissions were not granted.");
         }
       } else if (checkBluetoothStatusSeparately) {
         // If only checking BT status (shouldn't happen with current logic, but for safety)
@@ -293,20 +298,18 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
     } else if (Platform.isIOS) {
       // iOS handles permissions differently - often implicitly granted or requested on first use by the plugin
       // However, explicitly requesting can be good practice.
-      print(
-        "Requesting iOS BLE permissions (handled by Info.plist descriptions)...",
-      );
+      // print("Requesting iOS BLE permissions (handled by Info.plist descriptions)...");
       Map<Permission, PermissionStatus> statuses =
           await [
             Permission.bluetooth,
             Permission.locationWhenInUse,
           ].request(); // Request basic bluetooth and location
 
-      print("--- Permission Request Results (iOS) ---");
+      // print("--- Permission Request Results (iOS) ---");
       statuses.forEach((permission, status) {
-        print("${permission.toString().split('.').last}: ${status.name}");
+        // print("${permission.toString().split('.').last}: ${status.name}");
       });
-      print("---------------------------------------");
+      // print("---------------------------------------");
 
       // On iOS, if the keys are in Info.plist, the OS handles prompting.
       // We primarily check if the user denied them.
@@ -323,9 +326,7 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
           statuses.values.any(
             (status) => status.isPermanentlyDenied || status.isDenied,
           )) {
-        print(
-          "Required iOS permissions were denied/permanently denied. Check Settings.",
-        );
+        // print("Required iOS permissions were denied/permanently denied. Check Settings.");
         if (statuses.values.any((status) => status.isPermanentlyDenied)) {
           await openAppSettings();
         }
@@ -333,9 +334,9 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
     }
 
     if (permissionsGranted) {
-      print("Required permissions appear to be granted for this platform.");
+      // print("Required permissions appear to be granted for this platform.");
     } else {
-      print("Required permissions were NOT granted for this platform.");
+      // print("Required permissions were NOT granted for this platform.");
     }
     return permissionsGranted;
   }
@@ -654,6 +655,24 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter messages based on flight ID
+    final filteredMessages =
+        _receivedMessages.where((message) {
+          if (_flightIdFilter.isEmpty) {
+            return true; // Show all if filter is empty
+          }
+          final messageData = message.messageData;
+          // Check if it's a flight-related message type
+          final messageType = messageData['messageType'];
+          if (messageType == MessageType.flightUpdate ||
+              messageType == MessageType.flightUpdateGeneral) {
+            final flightId = messageData['flightId'] as String?;
+            return flightId != null &&
+                flightId.toLowerCase().contains(_flightIdFilter);
+          }
+          return false; // Don't show non-flight messages when filtering
+        }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vuelink Scanner'),
@@ -719,35 +738,6 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
                             color: Colors.grey.shade700,
                             fontSize: 13,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Show BLE State clearly
-                        Row(
-                          children: [
-                            Icon(
-                              _currentState == BluetoothLowEnergyState.poweredOn
-                                  ? Icons.bluetooth_connected
-                                  : Icons.bluetooth_disabled,
-                              size: 16,
-                              color:
-                                  _currentState ==
-                                          BluetoothLowEnergyState.poweredOn
-                                      ? Colors.blue
-                                      : Colors.grey,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'BT State: ${_currentState.name}',
-                              style: TextStyle(
-                                color:
-                                    _currentState ==
-                                            BluetoothLowEnergyState.poweredOn
-                                        ? Colors.blue
-                                        : Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -818,28 +808,72 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
               ),
             ),
           ),
-          // Message count
+          // Filter Input Field in a Card
+          Card(
+            margin: const EdgeInsets.symmetric(
+              horizontal: 8.0,
+              vertical: 4.0,
+            ), // Match card style
+            elevation: 2, // Match card style
+            shape: RoundedRectangleBorder(
+              // Match card style
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+              ), // Inner padding for TextField
+              child: TextField(
+                controller: _filterController,
+                decoration: InputDecoration(
+                  hintText: 'Filter by Flight ID...',
+                  prefixIcon: const Icon(Icons.filter_list),
+                  suffixIcon:
+                      _filterController.text.isNotEmpty
+                          ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _filterController.clear();
+                            },
+                          )
+                          : null,
+                  border: InputBorder.none, // Remove TextField border
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 8,
+                  ), // Adjust padding slightly
+                ),
+              ),
+            ),
+          ),
+          // Message count (reflects filtered count)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), // Adjust padding
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end, // Align to right
               children: [
                 Text(
-                  '$_messageCount messages',
+                  'Showing ${filteredMessages.length} of $_messageCount messages',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
           ),
-          // Messages list
+          // Messages list (uses filtered list)
           Expanded(
             child:
-                _receivedMessages.isEmpty
-                    ? const Center(child: Text('No messages received yet'))
+                filteredMessages.isEmpty
+                    ? Center(
+                      child: Text(
+                        _flightIdFilter.isEmpty
+                            ? 'No messages received yet'
+                            : 'No messages match filter "$_flightIdFilter"',
+                      ),
+                    )
                     : ListView.builder(
-                      itemCount: _receivedMessages.length,
+                      itemCount: filteredMessages.length,
                       itemBuilder: (context, index) {
-                        return _buildMessageCard(_receivedMessages[index]);
+                        return _buildMessageCard(filteredMessages[index]);
                       },
                     ),
           ),
@@ -853,6 +887,7 @@ class _BleScannerScreenState extends State<BleScannerScreen> {
     // Cancel our UI-specific subscriptions
     _stateSubscription?.cancel();
     _messageSubscription?.cancel();
+    _filterController.dispose(); // Dispose the controller
 
     // Don't stop scanning or dispose the service, just cleanup our instance
     _scannerInstance.cleanup();

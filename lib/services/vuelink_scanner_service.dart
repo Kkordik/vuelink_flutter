@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
@@ -431,6 +432,156 @@ class VuelinkReceivedMessage {
     required this.rawData,
     this.shouldForward = true,
   });
+
+  /// Convert VuelinkReceivedMessage to a JSON-serializable map
+  Map<String, dynamic> toJson() {
+    // Create a deep copy of messageData to modify enum values
+    final Map<String, dynamic> serializableMessageData = {};
+    messageData.forEach((key, value) {
+      if (value is MessageType) {
+        serializableMessageData[key] = value.value; // Store enum value
+      } else if (value is Priority) {
+        serializableMessageData[key] = value.value; // Store enum value
+      } else if (value is FlightUpdateType) {
+        serializableMessageData[key] = value.value; // Store enum value
+      } else if (value is Uint8List) {
+        // If raw bytes are somehow directly in messageData, encode them
+        serializableMessageData[key] = base64Encode(value);
+      } else {
+        // Assume other types are directly serializable (String, int, bool, etc.)
+        serializableMessageData[key] = value;
+      }
+    });
+
+    return {
+      'deviceName': deviceName,
+      'rssi': rssi,
+      'timestamp': timestamp.toIso8601String(), // Convert DateTime to string
+      'manufacturerId': manufacturerId,
+      'messageData': serializableMessageData, // Use the processed map
+      'rawData': base64Encode(rawData), // Convert Uint8List to base64 string
+      'shouldForward': shouldForward,
+    };
+  }
+
+  /// Create VuelinkReceivedMessage from a JSON map
+  factory VuelinkReceivedMessage.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> rawMessageData =
+        json['messageData'] as Map<String, dynamic>;
+
+    // Convert enum values back from integers
+    final Map<String, dynamic> deserializedMessageData = {};
+    rawMessageData.forEach((key, value) {
+      if (key == 'messageType' && value is int) {
+        deserializedMessageData[key] = MessageType.fromValue(value);
+      } else if (key == 'priority' && value is int) {
+        deserializedMessageData[key] = Priority.fromValue(value);
+      } else if (key == 'updateType' && value is int) {
+        deserializedMessageData[key] = FlightUpdateType.values.firstWhere(
+          (type) => type.value == value,
+          orElse: () => FlightUpdateType.general, // Default if needed
+        );
+      } else if (key == 'content' &&
+          value is String &&
+          rawMessageData['messageType'] == MessageType.generalBasic.value) {
+        // Handle potential base64 encoded raw bytes if stored directly (less common)
+        try {
+          deserializedMessageData[key] = base64Decode(value);
+        } catch (e) {
+          // Assume it wasn't base64, keep as string? Or handle error.
+          // For basic messages, content is often treated as raw bytes,
+          // but parseVuelinkPayload stores it directly as Uint8List.
+          // This case might be less relevant unless toJson manually encoded it.
+          deserializedMessageData[key] = value;
+        }
+      } else {
+        // Assume other types are correct as they are
+        deserializedMessageData[key] = value;
+      }
+    });
+
+    return VuelinkReceivedMessage(
+      deviceName: json['deviceName'] as String,
+      rssi: json['rssi'] as int,
+      timestamp: DateTime.parse(json['timestamp'] as String), // Parse DateTime
+      manufacturerId: json['manufacturerId'] as int,
+      messageData: deserializedMessageData, // Use the reconstructed map
+      rawData: base64Decode(json['rawData'] as String), // Decode base64 string
+      shouldForward: json['shouldForward'] as bool,
+    );
+  }
+
+  /// Convert VuelinkReceivedMessage to a simplified JSON map for deep linking
+  Map<String, dynamic> toDeepLinkJson() {
+    // Serialize only messageData and shouldForward
+    final Map<String, dynamic> serializableMessageData = {};
+    messageData.forEach((key, value) {
+      if (value is MessageType) {
+        serializableMessageData[key] = value.value;
+      } else if (value is Priority) {
+        serializableMessageData[key] = value.value;
+      } else if (value is FlightUpdateType) {
+        serializableMessageData[key] = value.value;
+      } else if (value is Uint8List) {
+        // Include content if it was stored as Uint8List (e.g., basic message)
+        serializableMessageData[key] = base64Encode(value);
+      } else {
+        serializableMessageData[key] = value;
+      }
+    });
+
+    return {
+      // Exclude: deviceName, rssi, timestamp, manufacturerId, rawData
+      'messageData': serializableMessageData,
+      'shouldForward': shouldForward,
+    };
+  }
+
+  /// Create VuelinkReceivedMessage from a simplified deep link JSON map
+  factory VuelinkReceivedMessage.fromDeepLinkJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> rawMessageData =
+        json['messageData'] as Map<String, dynamic>;
+
+    // Deserialize messageData (similar to fromJson)
+    final Map<String, dynamic> deserializedMessageData = {};
+    rawMessageData.forEach((key, value) {
+      if (key == 'messageType' && value is int) {
+        deserializedMessageData[key] = MessageType.fromValue(value);
+      } else if (key == 'priority' && value is int) {
+        deserializedMessageData[key] = Priority.fromValue(value);
+      } else if (key == 'updateType' && value is int) {
+        deserializedMessageData[key] = FlightUpdateType.values.firstWhere(
+          (type) => type.value == value,
+          orElse: () => FlightUpdateType.general,
+        );
+      } else if (key == 'content' &&
+          value is String &&
+          (deserializedMessageData['messageType'] ==
+              MessageType.generalBasic)) {
+        // Handle potential base64 encoded raw bytes if stored directly
+        try {
+          deserializedMessageData[key] = base64Decode(value);
+        } catch (e) {
+          deserializedMessageData[key] =
+              value; // Keep as string if decode fails
+        }
+      } else {
+        deserializedMessageData[key] = value;
+      }
+    });
+
+    // Use defaults/placeholders for excluded fields
+    return VuelinkReceivedMessage(
+      deviceName: 'Shared Link', // Placeholder
+      rssi: -100, // Placeholder
+      timestamp: DateTime.now(), // Use current time for received link message
+      manufacturerId: 0, // Placeholder
+      messageData: deserializedMessageData,
+      rawData: Uint8List(0), // Empty placeholder
+      shouldForward:
+          json['shouldForward'] as bool? ?? false, // Default if missing
+    );
+  }
 }
 
 /// Helper class for efficiently building strings
